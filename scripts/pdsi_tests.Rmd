@@ -1,7 +1,6 @@
 ---
 title: "scPDSI tests"
 author: "Carlos Dobler"
-date: "1/31/2022"
 output: github_document
 ---
 
@@ -197,7 +196,7 @@ ggplot() +
 
 If I randomly choose a pixel with a HIGH correlation coefficient, the time series look like this:
 
-```{r}
+```{r fig.height=2.5, fig.width=7}
 func_ts_comparison <- function(thres){
   
   cor_map %>% 
@@ -228,13 +227,13 @@ func_ts_comparison <- function(thres){
   
 }
 
-func_ts_comparison(0.8) 
+func_ts_comparison(0.8)
 
 ```
 
 If I choose one with a LOW correlation coefficient:
 ```{r}
-func_ts_comparison(0.1) 
+func_ts_comparison(0.1)
 ```
 
 If I choose one with a NEGATIVE correlation coefficient:
@@ -244,7 +243,7 @@ func_ts_comparison(-0.3)
 
 # 1.2. Spatial correlation
 The following figure shows correlation coefficients between my results and Van der Schrier's PDSI at a month level (i.e. my resulting map at t-n vs. VDS resulting map at t-n). We can see that correlation fluctuates over time, between a coefficient of ~0 and ~0.5.
-```{r}
+```{r fig.height=2.5, fig.width=7}
 
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
   split("foo") %>% 
@@ -260,7 +259,7 @@ t_cor %>%
 ```
 
 If I randomly choose a date where correlation was HIGH-ish, the two maps look like this:
-```{r}
+```{r fig.width=10, fig.height=3.3}
 func_sp_comparison <- function(thres){
   
   t_cor %>% 

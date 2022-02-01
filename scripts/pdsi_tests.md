@@ -1,7 +1,6 @@
 scPDSI tests
 ================
 Carlos Dobler
-1/31/2022
 
 Here I show results of a series of test runs for calculating scPDSI with
 the R package `scpdsi`. All tests were ran for a region centered on
@@ -122,7 +121,7 @@ func_ts_comparison <- function(thres){
   
 }
 
-func_ts_comparison(0.8) 
+func_ts_comparison(0.8)
 ```
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
@@ -130,7 +129,7 @@ func_ts_comparison(0.8)
 If I choose one with a LOW correlation coefficient:
 
 ``` r
-func_ts_comparison(0.1) 
+func_ts_comparison(0.1)
 ```
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
