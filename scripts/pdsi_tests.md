@@ -14,7 +14,8 @@ with the R package `SPEI` using various ERA5 Reanalysis variables.
 
 ### Sections:
 
-scPDSI calculated: [1. …with Potential Evaporation (ERA5
+scPDSI calculated:  
+[1. …with Potential Evaporation (ERA5
 data)](#1-with-era5s-potential-evaporation)  
 [2. …with Thornthwaite’s formulation](#2-with-thornthwaite)  
 [3. …with Hargreaves’ formulation](#3-with-hargreaves)  

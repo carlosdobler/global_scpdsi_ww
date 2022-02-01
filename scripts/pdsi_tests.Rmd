@@ -8,7 +8,7 @@ Here I show results of a series of test runs for calculating scPDSI with the R p
 
 
 ### Sections:
-scPDSI calculated:
+scPDSI calculated:     
 [1. ...with Potential Evaporation (ERA5 data)](#1-with-era5s-potential-evaporation)           
 [2. ...with Thornthwaite's formulation](#2-with-thornthwaite)    
 [3. ...with Hargreaves' formulation](#3-with-hargreaves)    
