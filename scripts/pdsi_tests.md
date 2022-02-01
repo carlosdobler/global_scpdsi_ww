@@ -16,9 +16,9 @@ with the R package `SPEI` using various ERA5 Reanalysis variables.
 
 scPDSI calculated: [1. …with Potential Evaporation (ERA5
 data)](#1-with-era5s-potential-evaporation)  
-[2. …with Thornthwaite’s formulation](#2-with-thornthwaite) [3. …with
-Hargreaves’ formulation](#3-with-hargreaves) [4. …with Penman-Monteith’s
-formulation](#4-with-penman)
+[2. …with Thornthwaite’s formulation](#2-with-thornthwaite)  
+[3. …with Hargreaves’ formulation](#3-with-hargreaves)  
+[4. …with Penman-Monteith’s formulation](#4-with-penman)
 
 ## 1. …with ERA5’s potential evaporation
 
@@ -132,7 +132,7 @@ func_ts_comparison <- function(thres){
 func_ts_comparison(0.8)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_1_1-1.png)<!-- -->
 
 If I choose one with a LOW correlation coefficient:
 
@@ -140,7 +140,7 @@ If I choose one with a LOW correlation coefficient:
 func_ts_comparison(0.1)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_1_2-1.png)<!-- -->
 
 If I choose one with a NEGATIVE correlation coefficient:
 
@@ -148,7 +148,7 @@ If I choose one with a NEGATIVE correlation coefficient:
 func_ts_comparison(-0.3)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_1_3-1.png)<!-- -->
 
 ### 1.2. Spatial correlation
 
@@ -170,7 +170,7 @@ t_cor %>%
   geom_smooth()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/sp_1-1.png)<!-- -->
 
 If I randomly choose a date where correlation was HIGH-ish, the two maps
 look like this:
@@ -213,7 +213,7 @@ func_sp_comparison <- function(thres){
 func_sp_comparison(0.5)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_1_1-1.png)<!-- -->
 
 If I choose one where correlation is LOW:
 
@@ -221,7 +221,7 @@ If I choose one where correlation is LOW:
 func_sp_comparison(0.1)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_1_2-1.png)<!-- -->
 
 ## 2. …with Thornthwaite
 
@@ -288,7 +288,7 @@ ggplot() +
   labs(subtitle = d)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
 ### 2.1. Temporal correlation
 
@@ -310,7 +310,7 @@ ggplot() +
   coord_fixed()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
 If I randomly choose a pixel with HIGH correlation, the time series look
 like this:
@@ -319,7 +319,7 @@ like this:
 func_ts_comparison(0.8) 
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_2_1-1.png)<!-- -->
 
 And with LOW correlation:
 
@@ -327,7 +327,7 @@ And with LOW correlation:
 func_ts_comparison(0.1)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_2_2-1.png)<!-- -->
 
 ### 2.2. Spatial correlation
 
@@ -347,7 +347,7 @@ t_cor %>%
   geom_smooth()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/sp_2-1.png)<!-- -->
 
 If I randomly choose a date where correlation was HIGH:
 
@@ -355,14 +355,14 @@ If I randomly choose a date where correlation was HIGH:
 func_sp_comparison(0.6)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-16-1.png)<!-- --> And a
-date where correlation was LOW:
+![](pdsi_tests_files/figure-gfm/rand_sp_2_1-1.png)<!-- --> And a date
+where correlation was LOW:
 
 ``` r
 func_sp_comparison(0.1)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_2_2-1.png)<!-- -->
 
 ## 3. …with Hargreaves
 
@@ -424,7 +424,7 @@ ggplot() +
   labs(subtitle = d)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 ### 3.1. Temporal correlation
 
@@ -445,7 +445,7 @@ ggplot() +
   coord_fixed()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
 If I randomly choose a pixel with HIGH correlation:
 
@@ -453,7 +453,7 @@ If I randomly choose a pixel with HIGH correlation:
 func_ts_comparison(0.8) 
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_3_1-1.png)<!-- -->
 
 And one with LOW correlation:
 
@@ -461,7 +461,7 @@ And one with LOW correlation:
 func_ts_comparison(0.1) 
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_3_2-1.png)<!-- -->
 
 ### 3.2. Spatial correlation
 
@@ -481,7 +481,7 @@ t_cor %>%
   geom_smooth()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/sp_3-1.png)<!-- -->
 
 If I randomly choose a date with a HIGH-ish correlation:
 
@@ -489,7 +489,7 @@ If I randomly choose a date with a HIGH-ish correlation:
 func_sp_comparison(0.55)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_3_1-1.png)<!-- -->
 
 And one with LOW correlation:
 
@@ -497,7 +497,7 @@ And one with LOW correlation:
 func_sp_comparison(0.1)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_3_2-1.png)<!-- -->
 
 ## 4. …with Penman
 
@@ -568,7 +568,7 @@ ggplot() +
   labs(subtitle = d)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ### 4.1. Temporal correlation
 
@@ -587,7 +587,7 @@ ggplot() +
   coord_fixed()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 If I randomly choose a pixel with HIGH correlation:
 
@@ -595,7 +595,7 @@ If I randomly choose a pixel with HIGH correlation:
 func_ts_comparison(0.8)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_4_1-1.png)<!-- -->
 
 And one with LOW correlation:
 
@@ -603,7 +603,7 @@ And one with LOW correlation:
 func_ts_comparison(0.1) 
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_ts_4_2-1.png)<!-- -->
 
 ### 4.2. Spatial correlation
 
@@ -622,7 +622,7 @@ t_cor %>%
   geom_smooth()
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-31-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/sp_4-1.png)<!-- -->
 
 If I randomly choose a date with HIGH-ish correlations:
 
@@ -630,7 +630,7 @@ If I randomly choose a date with HIGH-ish correlations:
 func_sp_comparison(0.6)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_4_1-1.png)<!-- -->
 
 And one with LOW correlations:
 
@@ -638,4 +638,4 @@ And one with LOW correlations:
 func_sp_comparison(0.1)
 ```
 
-![](pdsi_tests_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+![](pdsi_tests_files/figure-gfm/rand_sp_4_2-1.png)<!-- -->
