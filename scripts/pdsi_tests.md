@@ -12,6 +12,14 @@ period. I used four PET formulations: one uses the “raw” potential
 evaporation from ERA5 Reanalysis data; the other three were calculated
 with the R package `SPEI` using various ERA5 Reanalysis variables.
 
+### Sections:
+
+scPDSI calculated: [1. …with Potential Evaporation (ERA5
+data)](#1-with-era5s-potential-evaporation)  
+[2. …with Thornthwaite’s formulation](#2-with-thornthwaite) [3. …with
+Hargreaves’ formulation](#3-with-hargreaves) [4. …with Penman-Monteith’s
+formulation](#4-with-penman)
+
 ## 1. …with ERA5’s potential evaporation
 
 ``` r
@@ -142,7 +150,7 @@ func_ts_comparison(-0.3)
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-# 1.2. Spatial correlation
+### 1.2. Spatial correlation
 
 The following figure shows correlation coefficients between my results
 and Van der Schrier’s PDSI at a month level (i.e. my resulting map at
@@ -321,7 +329,7 @@ func_ts_comparison(0.1)
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
-# 2.2. Spatial correlation
+### 2.2. Spatial correlation
 
 Spatially, correlation between my results and Van der Schrier’s
 fluctuates around \~0.1 and \~0.6:
@@ -455,7 +463,7 @@ func_ts_comparison(0.1)
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
-# 3.2. Spatial correlation
+### 3.2. Spatial correlation
 
 Interestingly, spatial correlation between my results and Van der
 Schrier’s shows a downward trend over time.
@@ -597,7 +605,7 @@ func_ts_comparison(0.1)
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
 
-# 1.2. Spatial correlation
+### 4.2. Spatial correlation
 
 Here we see a drastic decline of spatial correlations over time.
 
