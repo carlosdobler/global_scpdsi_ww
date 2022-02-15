@@ -28,102 +28,102 @@ NEW!!!
 
 ## 1. …with ERA5’s potential evaporation
 
-Mapping a random date:
-<img src="pdsi_tests_files/figure-gfm/rand_date_1-1.png" style="display: block; margin: auto;" />
+Mapping a random date:  
+<img src="pdsi_tests_files/figure-gfm/rand_date_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 1.1. Temporal correlation
 
 The following figure correlates my results against Van der Schrier’s
 PDSI time series on a per-pixel basis:
 
-<img src="pdsi_tests_files/figure-gfm/cor_map_1-1.png" style="display: block; margin: auto;" />
+<img src="pdsi_tests_files/figure-gfm/cor_map_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
 If I randomly choose a pixel with a **high** correlation coefficient,
 the time series look like this:
 
-<img src="pdsi_tests_files/figure-gfm/rand_ts_1_1-1.png" style="display: block; margin: auto;" />
+<img src="pdsi_tests_files/figure-gfm/rand_ts_1_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I choose one with a **low** correlation coefficient:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_1_2-1.png" style="display: block; margin: auto;" />
+If I choose one with a **low** correlation coefficient:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_1_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 1.2. Spatial correlation
 
 The following figure shows correlation coefficients between my results
 and Van der Schrier’s PDSI at a month level (i.e. my resulting map at
-\_t_n vs. VDS resulting map at \_t_n):
-<img src="pdsi_tests_files/figure-gfm/sp_1-1.png" style="display: block; margin: auto;" />
+*t* n vs. VDS resulting map at *t* n):  
+<img src="pdsi_tests_files/figure-gfm/sp_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I randomly choose a date where correlation was **high-ish**, the two
-maps look like this:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_1_1-1.png" style="display: block; margin: auto;" />
+If I randomly choose a date when correlation was **high-ish**, the two
+maps look like this:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_1_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I choose one where correlation is **low**:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_1_2-1.png" style="display: block; margin: auto;" />
+If I choose one when correlation is **low**:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_1_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ## 2. …with Thornthwaite
 
 Thornthwaite’s PET formulation uses two variables: average temperature
 and latitude.
 
-Mapping a random date:
-<img src="pdsi_tests_files/figure-gfm/rand_date_2-1.png" style="display: block; margin: auto;" />
+Mapping a random date:  
+<img src="pdsi_tests_files/figure-gfm/rand_date_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 2.1. Temporal correlation
 
 When correlating my results using Thornthwaite vs Van der Schrier’s, we
 see a drastic improvement over previous results. All cells show positive
-correlations, and with high a coefficient:
-<img src="pdsi_tests_files/figure-gfm/cor_map_2-1.png" style="display: block; margin: auto;" />
+correlations, and with high a coefficient:  
+<img src="pdsi_tests_files/figure-gfm/cor_map_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 If I randomly choose a pixel with **high** correlation, the time series
-look like this:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_2_1-1.png" style="display: block; margin: auto;" />
+look like this:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_2_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-And with **low** correlation:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_2_2-1.png" style="display: block; margin: auto;" />
+And with **low** correlation:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_2_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 2.2. Spatial correlation
 
 Spatially, correlation between my results and Van der Schrier’s
-fluctuates around \~0.1 and \~0.7:
-<img src="pdsi_tests_files/figure-gfm/sp_2-1.png" style="display: block; margin: auto;" />
+fluctuates around \~0.1 and \~0.7:  
+<img src="pdsi_tests_files/figure-gfm/sp_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I randomly choose a date when correlation was **high**:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_2_1-1.png" style="display: block; margin: auto;" />
-And a date when correlation was **low**:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_2_2-1.png" style="display: block; margin: auto;" />
+If I randomly choose a date when correlation was **high**:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_2_1-1.png" style="display: block; margin: auto auto auto 0;" />
+And a date when correlation was **low**:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_2_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ## 3. …with Hargreaves
 
 Hargraves’ PET formulation uses three variables: maximum temperature,
 minimum temperature, and radiation.
 
-Mapping a random date:
-<img src="pdsi_tests_files/figure-gfm/rand_date_3-1.png" style="display: block; margin: auto;" />
+Mapping a random date:  
+<img src="pdsi_tests_files/figure-gfm/rand_date_3-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 3.1. Temporal correlation
 
-Hargraves seem to do worse than Thornthwaite on a per-pixel basis.
-<img src="pdsi_tests_files/figure-gfm/cor_map_3-1.png" style="display: block; margin: auto;" />
+Hargraves seem to do worse than Thornthwaite on a per-pixel basis:  
+<img src="pdsi_tests_files/figure-gfm/cor_map_3-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I randomly choose a pixel with **high** correlation:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_3_1-1.png" style="display: block; margin: auto;" />
+If I randomly choose a pixel with **high** correlation:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_3_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-And one with **low** correlation:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_3_2-1.png" style="display: block; margin: auto;" />
+And one with **low** correlation:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_3_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 3.2. Spatial correlation
 
 Interestingly, the spatial correlation between my results and Van der
-Schrier’s show an “arching” trend over time:
-<img src="pdsi_tests_files/figure-gfm/sp_3-1.png" style="display: block; margin: auto;" />
+Schrier’s show an “arching” trend over time:  
+<img src="pdsi_tests_files/figure-gfm/sp_3-1.png" style="display: block; margin: auto auto auto 0;" />
 
 If I randomly choose a date with a **high-ish** correlation it looks
-like this:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_3_1-1.png" style="display: block; margin: auto;" />
+like this:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_3_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-And one with **low** correlation:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_3_2-1.png" style="display: block; margin: auto;" />
+And one with **low** correlation:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_3_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ## 4. …with Penman
 
@@ -133,32 +133,33 @@ minimum temperature, wind speed (it should be at 2m but I used at 10m),
 external radiance (I used “top of atmosphere”), incoming radiance,
 dewpoint temperature (to derive vapor pressure), and surface pressure.
 
-Mapping a random date:
-<img src="pdsi_tests_files/figure-gfm/rand_date_4-1.png" style="display: block; margin: auto;" />
+Mapping a random date:  
+<img src="pdsi_tests_files/figure-gfm/rand_date_4-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 4.1. Temporal correlation
 
 Again, we don’t see much improvement over Thornthwaite’s. Similar
-spatial patterns and magnitudes of correlation as when using Hargraves.
-<img src="pdsi_tests_files/figure-gfm/cor_map_4-1.png" style="display: block; margin: auto;" />
+spatial patterns and magnitudes of correlation as when using
+Hargraves:  
+<img src="pdsi_tests_files/figure-gfm/cor_map_4-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I randomly choose a pixel with **high** correlation:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_4_1-1.png" style="display: block; margin: auto;" />
+If I randomly choose a pixel with **high** correlation:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_4_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-And one with **low** correlation:
-<img src="pdsi_tests_files/figure-gfm/rand_ts_4_2-1.png" style="display: block; margin: auto;" />
+And one with **low** correlation:  
+<img src="pdsi_tests_files/figure-gfm/rand_ts_4_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 4.2. Spatial correlation
 
 Similarly, on a spatial basis, correlations display and “arched” trend
-over time.
-<img src="pdsi_tests_files/figure-gfm/sp_4-1.png" style="display: block; margin: auto;" />
+over time:  
+<img src="pdsi_tests_files/figure-gfm/sp_4-1.png" style="display: block; margin: auto auto auto 0;" />
 
-If I randomly choose a date with **high-ish** correlations:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_4_1-1.png" style="display: block; margin: auto;" />
+If I randomly choose a date with **high-ish** correlations:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_4_1-1.png" style="display: block; margin: auto auto auto 0;" />
 
-And one with **low** correlations:
-<img src="pdsi_tests_files/figure-gfm/rand_sp_4_2-1.png" style="display: block; margin: auto;" />
+And one with **low** correlations:  
+<img src="pdsi_tests_files/figure-gfm/rand_sp_4_2-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ## 5. Penman + elevation
 
@@ -168,13 +169,13 @@ the Earth’s gravitational acceleration, g (= 9.80665 m s-2).
 
 ### 5.1. Temporal correlation
 
-Elevation doesn’t seem to improve things on a per-pixel basis…
-<img src="pdsi_tests_files/figure-gfm/cor_map_5-1.png" style="display: block; margin: auto;" />
+Elevation doesn’t seem to improve things on a per-pixel basis…  
+<img src="pdsi_tests_files/figure-gfm/cor_map_5-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 5.2. Spatial correlation
 
-And spatially, variability in correlation look very similar…
-<img src="pdsi_tests_files/figure-gfm/sp_5-1.png" style="display: block; margin: auto;" />
+And spatially, variability in correlation look very similar…  
+<img src="pdsi_tests_files/figure-gfm/sp_5-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ## 6. Penman + elevation + AWC
 
@@ -189,15 +190,15 @@ coefficient with Van der Schrier’s data). While in the former runs AWC
 was kept constant (100 mm), here it can have values from 5 to 215.
 
 This is how the “artificial” AWC layer looks like. We can see that much
-of central Europe was run with low AWC values (\< 50):
-<img src="pdsi_tests_files/figure-gfm/awc-1.png" style="display: block; margin: auto;" />
+of central Europe was run with low AWC values (\< 50):  
+<img src="pdsi_tests_files/figure-gfm/awc-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 6.1. Temporal correlation
 
-Unfortunately, the addition of AWC does not seem to improve results:
-<img src="pdsi_tests_files/figure-gfm/cor_map_6-1.png" style="display: block; margin: auto;" />
+Unfortunately, the addition of AWC does not seem to improve results:  
+<img src="pdsi_tests_files/figure-gfm/cor_map_6-1.png" style="display: block; margin: auto auto auto 0;" />
 
 ### 6.2. Spatial correlation
 
-And same spatially:
-<img src="pdsi_tests_files/figure-gfm/sp_6-1.png" style="display: block; margin: auto;" />
+And same spatially:  
+<img src="pdsi_tests_files/figure-gfm/sp_6-1.png" style="display: block; margin: auto auto auto 0;" />
