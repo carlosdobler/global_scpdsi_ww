@@ -13,15 +13,17 @@ scPDSI calculated:
 [2. ...with Thornthwaite's formulation](#2-with-thornthwaite)    
 [3. ...with Hargreaves' formulation](#3-with-hargreaves)    
 [4. ...with Penman-Monteith's formulation](#4-with-penman)    
-NEW!!!:    
-[5. Penman + elevation](#5-penman-elevation)    
-[6. Penman + elevation + AWC](#6-penman-elevation-awc)    
+    
+NEW!!!    
+[5. Penman + elevation](#5-penman--elevation)    
+[6. Penman + elevation + AWC](#6-penman--elevation--awc)    
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,
+knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
-                      warning = FALSE)
+                      warning = FALSE,
+                      fig.align = "center")
 
 source(here::here("scripts/00-set-up.R"))
 
@@ -144,7 +146,7 @@ c(s_pdsi, mask) %>%
 ```
 
 Mapping a random date:
-```{r}
+```{r rand_date_1}
 
 sample(date_vector, 1) -> d
 
@@ -168,7 +170,7 @@ ggplot() +
 ### 1.1. Temporal correlation
 The following figure correlates my results against Van der Schrier's PDSI time series on a per-pixel basis:
 
-```{r}
+```{r cor_map_1}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
@@ -183,13 +185,13 @@ ggplot() +
 
 ```
 
-If I randomly choose a pixel with a *high* correlation coefficient, the time series look like this:
+If I randomly choose a pixel with a **high** correlation coefficient, the time series look like this:
 
 ```{r rand_ts_1_1, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.8)
 ```
 
-If I choose one with a LOW correlation coefficient:
+If I choose one with a **low** correlation coefficient:
 ```{r rand_ts_1_2, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.1)
 ```
@@ -212,12 +214,12 @@ t_cor %>%
 
 ```
 
-If I randomly choose a date where correlation was *high-ish*, the two maps look like this:
+If I randomly choose a date where correlation was **high-ish**, the two maps look like this:
 ```{r rand_sp_1_1, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.65)
 ```
 
-If I choose one where correlation is *low*:
+If I choose one where correlation is **low**:
 ```{r rand_sp_1_2, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.1)
 ```
@@ -271,7 +273,7 @@ c(s_pdsi, mask) %>%
 ```
 
 Mapping a random date:
-```{r}
+```{r rand_date_2}
 
 sample(date_vector, 1) -> d
 
@@ -294,7 +296,7 @@ ggplot() +
 
 ### 2.1. Temporal correlation
 When correlating my results using Thornthwaite vs Van der Schrier's, we see a drastic improvement over previous results. All cells show positive correlations, and with high a coefficient:
-```{r}
+```{r cor_map_2}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
@@ -309,12 +311,12 @@ ggplot() +
 
 ```
 
-If I randomly choose a pixel with *high* correlation, the time series look like this:
+If I randomly choose a pixel with **high** correlation, the time series look like this:
 ```{r rand_ts_2_1, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.8) 
 ```
 
-And with *low* correlation:
+And with **low** correlation:
 ```{r rand_ts_2_2, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.15)
 ```
@@ -336,11 +338,11 @@ t_cor %>%
 
 ```
 
-If I randomly choose a date when correlation was *high*:
+If I randomly choose a date when correlation was **high**:
 ```{r rand_sp_2_1, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.65)
 ```
-And a date when correlation was *low*:
+And a date when correlation was **low**:
 ```{r rand_sp_2_2, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.1)
 ```
@@ -390,7 +392,7 @@ c(s_pdsi, mask) %>%
 ```
 
 Mapping a random date:
-```{r}
+```{r rand_date_3}
 
 sample(date_vector, 1) -> d
 
@@ -413,7 +415,7 @@ ggplot() +
 
 ### 3.1. Temporal correlation
 Hargraves seem to do worse than Thornthwaite on a per-pixel basis.
-```{r}
+```{r cor_map_3}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
@@ -428,12 +430,12 @@ ggplot() +
 
 ```
 
-If I randomly choose a pixel with *high* correlation:
+If I randomly choose a pixel with **high** correlation:
 ```{r rand_ts_3_1, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.8)
 ```
 
-And one with *low* correlation:
+And one with **low** correlation:
 ```{r rand_ts_3_2, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.1) 
 ```
@@ -455,12 +457,12 @@ t_cor %>%
 
 ```
 
-If I randomly choose a date with a *high-ish* correlation it looks like this:
+If I randomly choose a date with a **high-ish** correlation it looks like this:
 ```{r rand_sp_3_1, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.65)
 ```
 
-And one with *low* correlation:
+And one with **low** correlation:
 ```{r rand_sp_3_2, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.1)
 ```
@@ -517,7 +519,7 @@ c(s_pdsi, mask) %>%
 ```
 
 Mapping a random date:
-```{r}
+```{r rand_date_4}
 
 sample(date_vector, 1) -> d
 
@@ -540,7 +542,7 @@ ggplot() +
 
 ### 4.1. Temporal correlation
 Again, we don't see much improvement over Thornthwaite's. Similar spatial patterns and magnitudes of correlation as when using Hargraves. 
-```{r}
+```{r cor_map_4}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
@@ -555,12 +557,12 @@ ggplot() +
 
 ```
 
-If I randomly choose a pixel with *high* correlation:
+If I randomly choose a pixel with **high** correlation:
 ```{r rand_ts_4_1, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.8)
 ```
 
-And one with *low* correlation:
+And one with **low** correlation:
 ```{r rand_ts_4_2, fig.height=2.5, fig.width=7}
 func_ts_comparison(0.1) 
 ```
@@ -582,12 +584,12 @@ t_cor %>%
 
 ```
 
-If I randomly choose a date with *high-ish* correlations:
+If I randomly choose a date with **high-ish** correlations:
 ```{r rand_sp_4_1, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.65)
 ```
 
-And one with *low* correlations:
+And one with **low** correlations:
 ```{r rand_sp_4_2, fig.width=10, fig.height=3.3}
 func_sp_comparison(0.1)
 ```
@@ -645,7 +647,7 @@ c(s_pdsi, mask) %>%
 
 ### 5.1. Temporal correlation
 Elevation doesn't seem to improve things on a per-pixel basis... 
-```{r}
+```{r cor_map_5}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
@@ -742,7 +744,7 @@ s_pdsi %>%
 ```
 
 This is how the "artificial" AWC layer looks like. We can see that much of central Europe was run with low AWC values (< 50):
-```{r}
+```{r awc}
 
 ggplot() +
   geom_stars(data = s_awc) +
@@ -757,7 +759,7 @@ ggplot() +
 
 ### 6.1. Temporal correlation
 Unfortunately, the addition of AWC does not seem to improve results:
-```{r}
+```{r cor_map_6}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
