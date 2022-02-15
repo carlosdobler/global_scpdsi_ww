@@ -4,13 +4,14 @@ Carlos Dobler
 
 Here I show results of a series of test runs for calculating scPDSI with
 the R package `scpdsi`. All tests were ran for a region centered on
-Mexico to reduce processing times. Of the variables that scPDSI asks
-for, the only ones that would vary were monthly precipitation and
-monthly potential evapotranspiration (PET). AWC remained constant (100
-mm), and the start and end dates for calibration included the whole
-period. I used four PET formulations: one uses the “raw” potential
-evaporation from ERA5 Reanalysis data; the other three were calculated
-with the R package `SPEI` using various ERA5 Reanalysis variables.
+~~Mexico~~ Central Europe to reduce processing times. Of the variables
+that scPDSI asks for, the only ones that would vary were monthly
+precipitation and monthly potential evapotranspiration (PET). AWC
+remained constant (100 mm), and the start and end dates for calibration
+included the whole period. I used four PET formulations: one uses the
+“raw” potential evaporation from ERA5 Reanalysis data (no
+transpiration); the other three were calculated with the R package
+`SPEI` using various ERA5 Reanalysis variables.
 
 ### Sections:
 
@@ -19,12 +20,15 @@ scPDSI calculated:
 data)](#1-with-era5s-potential-evaporation)  
 [2. …with Thornthwaite’s formulation](#2-with-thornthwaite)  
 [3. …with Hargreaves’ formulation](#3-with-hargreaves)  
-[4. …with Penman-Monteith’s formulation](#4-with-penman)
+[4. …with Penman-Monteith’s formulation](#4-with-penman)  
+NEW!!!:  
+[5. Penman + elevation](#5-penman-elevation)  
+[6. Penman + elevation + AWC](#6-penman-elevation-awc)
 
 ## 1. …with ERA5’s potential evaporation
 
 ``` r
-c(var_pr, var_potev, along = 3) %>% 
+c(var_pr, var_potevap, along = 3) %>% 
   st_apply(c(1,2), function(x){
     
     pdsi(P = x[1:504], 
@@ -38,7 +42,9 @@ c(var_pr, var_potev, along = 3) %>%
   st_set_dimensions("time", values = date_vector) %>% 
   aperm(c(2,3,1)) -> s_pdsi
 
-s_pdsi[is.na(adrop(vds[,,,1]))] <- NA
+c(s_pdsi, mask) %>% 
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> s_pdsi
 ```
 
 Mapping a random date:
@@ -67,21 +73,9 @@ ggplot() +
 ### 1.1. Temporal correlation
 
 The following figure correlates my results against Van der Schrier’s
-PDSI time series on a per-pixel basis. Overall, correlation values are
-low, and in some regions (e.g. Arizona) are negative.
+PDSI time series on a per-pixel basis:
 
 ``` r
-func_t_cor_map <- function(era_map, vds_map){
-  
-  c(era_map, vds_map, along = 3) %>% 
-  st_apply(c(1,2), function(x){
-    
-    cor(x[1:504], x[505:1008])
-    
-  }, 
-  FUTURE = T)
-}
-
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
 ggplot() +
@@ -96,40 +90,10 @@ ggplot() +
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
-If I randomly choose a pixel with a HIGH correlation coefficient, the
+If I randomly choose a pixel with a *high* correlation coefficient, the
 time series look like this:
 
 ``` r
-func_ts_comparison <- function(thres){
-  
-  cor_map %>% 
-    as_tibble() %>% 
-    filter(near(X, thres, 0.01)) %>% 
-    slice_sample(n = 1) %>% 
-    {c(.$longitude, .$latitude)} -> coords
-  
-  vds %>%
-    as_tibble() %>% 
-    filter(longitude == coords[1],
-           latitude == coords[2]) %>% 
-    pull(scpdsi) -> vect_vds
-
-  s_pdsi %>% 
-    as_tibble() %>% 
-    filter(longitude == coords[1],
-           latitude == coords[2]) %>% 
-    pull(X) -> vect_era
-
-  tibble(vds = vect_vds,
-         era5 = vect_era,
-         time = date_vector) %>% 
-    pivot_longer(-time, names_to = "src", values_to = "pdsi") %>% 
-    
-    ggplot(aes(x = time, y = pdsi, color = src)) +
-    geom_line()
-  
-}
-
 func_ts_comparison(0.8)
 ```
 
@@ -143,20 +107,11 @@ func_ts_comparison(0.1)
 
 ![](pdsi_tests_files/figure-gfm/rand_ts_1_2-1.png)<!-- -->
 
-If I choose one with a NEGATIVE correlation coefficient:
-
-``` r
-func_ts_comparison(-0.3)
-```
-
-![](pdsi_tests_files/figure-gfm/rand_ts_1_3-1.png)<!-- -->
-
 ### 1.2. Spatial correlation
 
 The following figure shows correlation coefficients between my results
 and Van der Schrier’s PDSI at a month level (i.e. my resulting map at
-t-n vs. VDS resulting map at t-n). We can see that correlation
-fluctuates over time, between a coefficient of \~0 and \~0.5.
+\_t_n vs. VDS resulting map at \_t_n):
 
 ``` r
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
@@ -173,50 +128,16 @@ t_cor %>%
 
 ![](pdsi_tests_files/figure-gfm/sp_1-1.png)<!-- -->
 
-If I randomly choose a date where correlation was HIGH-ish, the two maps
-look like this:
+If I randomly choose a date where correlation was *high-ish*, the two
+maps look like this:
 
 ``` r
-func_sp_comparison <- function(thres){
-  
-  t_cor %>% 
-    as_tibble() %>% 
-    filter(near(cor, thres, 0.01)) %>% 
-    slice_sample(n = 1) %>% 
-    pull(time) -> t_time
-  
-  s_pdsi %>%
-    filter(time == t_time) %>% 
-    adrop() %>% 
-    as_tibble() -> m_1
-  
-  vds %>%
-    filter(time == t_time) %>% 
-    adrop() %>% 
-    as_tibble() -> m_2
-  
-  left_join(m_1, m_2, by = c("longitude", "latitude")) %>%
-    rename(era5 = 3,
-           vds = 4) %>% 
-    pivot_longer(3:4, names_to = "src", values_to = "pdsi") %>% 
-    mutate(pdsi = case_when(pdsi < -5 ~ -5,
-                            pdsi > 5 ~ 5,
-                            TRUE ~ pdsi)) %>% 
-    ggplot(aes(x = longitude, y = latitude, fill = pdsi)) +
-    geom_raster() +
-    scale_fill_continuous_diverging(palette = "Blue-Red", rev = T, na.value = "grey80") +
-    facet_wrap(~src, ncol = 2) +
-    coord_equal() +
-    labs(subtitle = t_time)
-  
-}
-
-func_sp_comparison(0.5)
+func_sp_comparison(0.65)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_sp_1_1-1.png)<!-- -->
 
-If I choose one where correlation is LOW:
+If I choose one where correlation is *low*:
 
 ``` r
 func_sp_comparison(0.1)
@@ -238,8 +159,8 @@ var_tave %>% # average temp
   
   st_apply(c(1,2), function(x){
     
-    x[length(x)] -> lat
-    x[-length(x)] -> x_ts
+    tail(x, 1) -> lat
+    x[1:504] -> x_ts
     
     thornthwaite(Tave = x_ts, 
                  lat = lat)
@@ -251,27 +172,29 @@ var_tave %>% # average temp
   aperm(c(2,3,1)) -> pet
 
 # calculate pdsi
-c(var_pr, pet, along = 3) %>% 
+c(var_pr, pet, along = 3) %>%
   st_apply(c(1,2), function(x){
-    
-    pdsi(P = x[1:504], 
-         PE = x[505:1008], 
+
+    pdsi(P = x[1:504],
+         PE = x[505:1008],
          sc = T)$X %>% as.vector()
-    
+
   },
   FUTURE = T,
   future.seed = NULL,
-  .fname = "time") %>% 
-  
-  st_set_dimensions("time", values = date_vector) %>% 
+  .fname = "time") %>%
+
+  st_set_dimensions("time", values = date_vector) %>%
   aperm(c(2,3,1)) -> s_pdsi
+
+c(s_pdsi, mask) %>% 
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> s_pdsi
 ```
 
 Mapping a random date:
 
 ``` r
-s_pdsi[is.na(adrop(vds[,,,1]))] <- NA
-
 sample(date_vector, 1) -> d
 
 ggplot() +
@@ -294,9 +217,8 @@ ggplot() +
 ### 2.1. Temporal correlation
 
 When correlating my results using Thornthwaite vs Van der Schrier’s, we
-see an improvement over previous results. Almost all cells show positive
-correlations, although they tend to be quite low in the south-east of
-Mexico.
+see a drastic improvement over previous results. All cells show positive
+correlations, and with high a coefficient:
 
 ``` r
 func_t_cor_map(s_pdsi, vds) -> cor_map
@@ -313,8 +235,8 @@ ggplot() +
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-If I randomly choose a pixel with HIGH correlation, the time series look
-like this:
+If I randomly choose a pixel with *high* correlation, the time series
+look like this:
 
 ``` r
 func_ts_comparison(0.8) 
@@ -322,10 +244,10 @@ func_ts_comparison(0.8)
 
 ![](pdsi_tests_files/figure-gfm/rand_ts_2_1-1.png)<!-- -->
 
-And with LOW correlation:
+And with *low* correlation:
 
 ``` r
-func_ts_comparison(0.1)
+func_ts_comparison(0.15)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_ts_2_2-1.png)<!-- -->
@@ -333,7 +255,7 @@ func_ts_comparison(0.1)
 ### 2.2. Spatial correlation
 
 Spatially, correlation between my results and Van der Schrier’s
-fluctuates around \~0.1 and \~0.6:
+fluctuates around \~0.1 and \~0.7:
 
 ``` r
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
@@ -350,14 +272,14 @@ t_cor %>%
 
 ![](pdsi_tests_files/figure-gfm/sp_2-1.png)<!-- -->
 
-If I randomly choose a date where correlation was HIGH:
+If I randomly choose a date when correlation was *high*:
 
 ``` r
-func_sp_comparison(0.6)
+func_sp_comparison(0.65)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_sp_2_1-1.png)<!-- --> And a date
-where correlation was LOW:
+when correlation was *low*:
 
 ``` r
 func_sp_comparison(0.1)
@@ -372,7 +294,7 @@ minimum temperature, and radiation.
 
 ``` r
 # pet
-c(var_ra, var_tmax, var_tmin) %>%
+c(var_ra, var_tmax, var_tmin, along = 3) %>%
   st_apply(c(1,2), function(x){
     
     hargreaves(Tmin = x[1009:1512],
@@ -401,13 +323,15 @@ c(var_pr, pet, along = 3) %>%
   
   st_set_dimensions("time", values = date_vector) %>% 
   aperm(c(2,3,1)) -> s_pdsi
+
+c(s_pdsi, mask) %>% 
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> s_pdsi
 ```
 
 Mapping a random date:
 
 ``` r
-s_pdsi[is.na(adrop(vds[,,,1]))] <- NA
-
 sample(date_vector, 1) -> d
 
 ggplot() +
@@ -429,9 +353,7 @@ ggplot() +
 
 ### 3.1. Temporal correlation
 
-Using Hargraves doesn’t seem to improve much the correlation compared to
-those obtained using Thorthwaite. Most pixels show positive correlation,
-but again, values in the south-east tend to be low.
+Hargraves seem to do worse than Thornthwaite on a per-pixel basis.
 
 ``` r
 func_t_cor_map(s_pdsi, vds) -> cor_map
@@ -448,15 +370,15 @@ ggplot() +
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
-If I randomly choose a pixel with HIGH correlation:
+If I randomly choose a pixel with *high* correlation:
 
 ``` r
-func_ts_comparison(0.8) 
+func_ts_comparison(0.8)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_ts_3_1-1.png)<!-- -->
 
-And one with LOW correlation:
+And one with *low* correlation:
 
 ``` r
 func_ts_comparison(0.1) 
@@ -466,8 +388,8 @@ func_ts_comparison(0.1)
 
 ### 3.2. Spatial correlation
 
-Interestingly, spatial correlation between my results and Van der
-Schrier’s shows a downward trend over time.
+Interestingly, the spatial correlation between my results and Van der
+Schrier’s show an “arching” trend over time:
 
 ``` r
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
@@ -484,15 +406,16 @@ t_cor %>%
 
 ![](pdsi_tests_files/figure-gfm/sp_3-1.png)<!-- -->
 
-If I randomly choose a date with a HIGH-ish correlation:
+If I randomly choose a date with a *high-ish* correlation it looks like
+this:
 
 ``` r
-func_sp_comparison(0.55)
+func_sp_comparison(0.65)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_sp_3_1-1.png)<!-- -->
 
-And one with LOW correlation:
+And one with *low* correlation:
 
 ``` r
 func_sp_comparison(0.1)
@@ -507,22 +430,23 @@ are used to derive others. In this case, I used: maximum temperature,
 minimum temperature, wind speed (it should be at 2m but I used at 10m),
 external radiance (I used “top of atmosphere”), incoming radiance,
 dewpoint temperature (to derive vapor pressure), and surface pressure.
-The function recommends to include elevation, something I’ll try later.
 
 ``` r
 # pet
 source(here::here("scripts", "penman_mod.R"))
 
-c(var_tmin, var_tmax, var_u10, var_ra, var_rs, var_dewptemp, var_pres, along = 3) %>%
+c(var_tmin, var_tmax, var_wind, var_ra, var_rs, var_dewpoint, var_pressure, along = 3) -> stack
+
+stack %>% 
   st_apply(c(1,2), function(x){
     
     penman_mod(Tmin = x[1:504],
-           Tmax = x[505:1008],
-           U2 = x[1009:1512],
-           Ra = x[1513:2016],
-           Rs = x[2017:2520],
-           Tdew = x[2521:3024],
-           P = x[3025:3528])
+               Tmax = x[505:1008],
+               U2 = x[1009:1512],
+               Ra = x[1513:2016],
+               Rs = x[2017:2520],
+               Tdew = x[2521:3024],
+               P = x[3025:3528])
     
   },
   FUTURE = T,
@@ -530,7 +454,7 @@ c(var_tmin, var_tmax, var_u10, var_ra, var_rs, var_dewptemp, var_pres, along = 3
   st_set_dimensions("time", values = date_vector) %>% 
   aperm(c(2,3,1)) -> pet
 
-# pdsi
+# scpdsi
 c(var_pr, pet, along = 3) %>% 
   st_apply(c(1,2), function(x){
     
@@ -545,13 +469,15 @@ c(var_pr, pet, along = 3) %>%
   
   st_set_dimensions("time", values = date_vector) %>% 
   aperm(c(2,3,1)) -> s_pdsi
+
+c(s_pdsi, mask) %>% 
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> s_pdsi
 ```
 
 Mapping a random date:
 
 ``` r
-s_pdsi[is.na(adrop(vds[,,,1]))] <- NA
-
 sample(date_vector, 1) -> d
 
 ggplot() +
@@ -573,8 +499,8 @@ ggplot() +
 
 ### 4.1. Temporal correlation
 
-Again, we don’t see much improvement. Similar spatial patterns and
-magnitudes of correlation as when using Thornthwaite and Hargraves.
+Again, we don’t see much improvement over Thornthwaite’s. Similar
+spatial patterns and magnitudes of correlation as when using Hargraves.
 
 ``` r
 func_t_cor_map(s_pdsi, vds) -> cor_map
@@ -584,13 +510,14 @@ ggplot() +
   scale_fill_continuous_diverging(palette = "Blue-Red", 
                                   rev = T, 
                                   na.value = "grey80", 
-                                  limits = c(-0.95,0.95)) +
+                                  limits = c(-0.95,0.95),
+                                  name = "r") +
   coord_fixed()
 ```
 
 ![](pdsi_tests_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-If I randomly choose a pixel with HIGH correlation:
+If I randomly choose a pixel with *high* correlation:
 
 ``` r
 func_ts_comparison(0.8)
@@ -598,7 +525,7 @@ func_ts_comparison(0.8)
 
 ![](pdsi_tests_files/figure-gfm/rand_ts_4_1-1.png)<!-- -->
 
-And one with LOW correlation:
+And one with *low* correlation:
 
 ``` r
 func_ts_comparison(0.1) 
@@ -608,7 +535,8 @@ func_ts_comparison(0.1)
 
 ### 4.2. Spatial correlation
 
-Here we see a drastic decline of spatial correlations over time.
+Similarly, on a spatial basis, correlations display and “arched” trend
+over time.
 
 ``` r
 c(s_pdsi, vds, along = list(foo = c("era5", "vds"))) %>% 
@@ -625,18 +553,229 @@ t_cor %>%
 
 ![](pdsi_tests_files/figure-gfm/sp_4-1.png)<!-- -->
 
-If I randomly choose a date with HIGH-ish correlations:
+If I randomly choose a date with *high-ish* correlations:
 
 ``` r
-func_sp_comparison(0.6)
+func_sp_comparison(0.65)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_sp_4_1-1.png)<!-- -->
 
-And one with LOW correlations:
+And one with *low* correlations:
 
 ``` r
 func_sp_comparison(0.1)
 ```
 
 ![](pdsi_tests_files/figure-gfm/rand_sp_4_2-1.png)<!-- -->
+
+## 5. Penman + elevation
+
+Elevation is an additional variable that can be used to estimate PET
+under Penman’s formulation. I used ERA5 geopotential height divided by
+the Earth’s gravitational acceleration, g (= 9.80665 m s-2).
+
+``` r
+# pet
+abind(stack[[1]], var_z[[1]], along = 3) -> stack_array
+dim(stack_array) <- c(x = 78, y = 60, time = 3529)
+
+st_as_stars(stack_array) %>% 
+  st_apply(c(1,2), function(x){
+    
+    penman_mod(Tmin = x[1:504],
+               Tmax = x[505:1008],
+               U2 = x[1009:1512],
+               Ra = x[1513:2016],
+               Rs = x[2017:2520],
+               Tdew = x[2521:3024],
+               P = x[3025:3528],
+               z = x[3529])
+    
+  },
+  FUTURE = T,
+  .fname = "time") %>% 
+  aperm(c(2,3,1)) -> pet
+
+st_dimensions(pet) <- st_dimensions(var_tmin)
+
+# scpdsi
+c(var_pr, pet, along = 3) %>% 
+  st_apply(c(1,2), function(x){
+    
+    pdsi(P = x[1:504], 
+         PE = x[505:1008], 
+         sc = T)$X %>% as.vector()
+    
+  },
+  FUTURE = T,
+  future.seed = NULL,
+  .fname = "time") %>% 
+  
+  st_set_dimensions("time", values = date_vector) %>% 
+  aperm(c(2,3,1)) -> s_pdsi
+
+c(s_pdsi, mask) %>% 
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> s_pdsi
+```
+
+### 5.1. Temporal correlation
+
+Elevation doesn’t seem to improve things on a per-pixel basis…
+
+``` r
+func_t_cor_map(s_pdsi, vds) -> cor_map
+
+ggplot() +
+  geom_stars(data = cor_map) +
+  scale_fill_continuous_diverging(palette = "Blue-Red", 
+                                  rev = T, 
+                                  na.value = "grey80", 
+                                  limits = c(-0.95,0.95),
+                                  name = "r") +
+  coord_fixed()
+```
+
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+### 5.2. Spatial correlation
+
+And spatially, variability in correlation look very similar…
+
+``` r
+c(s_pdsi, vds, along = list(foo = c("era5", "vds"))) %>% 
+  split("foo") %>% 
+  as_tibble() %>% 
+  group_by(time) %>% 
+  summarize(cor = cor(era5, vds, use = "complete.obs")) -> t_cor
+
+t_cor %>%   
+  ggplot(aes(x = time, y = cor)) +
+  geom_point() +
+  geom_smooth()
+```
+
+![](pdsi_tests_files/figure-gfm/sp_5-1.png)<!-- -->
+
+## 6. Penman + elevation + AWC
+
+AWC is a variable required in the calculation of PDSI. I found several
+AWC datasets, but all of them are quite complicated to obtain and
+process (either antique, bizarre, or proprietary data formats). Before
+going through the pain of dealing with this, I ran an experiment to see
+to what extent AWC could improve results. The experiment consists of
+altering iteratively AWC values for each pixel and choose the one that
+gets me “the best” PDSI (i.e. the one with the highest correlation
+coefficient with Van der Schrier’s data). While in the former runs AWC
+was kept constant (100 mm), here it can have values from 5 to 215.
+
+``` r
+func_x <- function(x){
+  
+  if(sum(!is.na(x[1009:1512])) == 0){
+      rep(NA, 506)
+     } else{
+       
+       map_dfr(seq(5, 230, 30), function(awc_i){
+         
+         pdsi(P = x[1:504], 
+              PE = x[505:1008], 
+              AWC = awc_i,
+              sc = T)$X %>% as.vector() -> pdsi_result
+         
+         tibble(pdsi = pdsi_result,
+                awc = awc_i)
+         
+       }) -> tb_awc
+       
+       tb_awc %>% 
+         group_by(awc) %>% 
+         summarize(r = cor(pdsi, x[1009:1512])) %>% 
+         filter(r == max(r, na.rm = T)) %>% 
+         slice_sample(n = 1) -> tb_cor
+       
+       tb_awc %>% 
+         filter(awc == tb_cor$awc) %>% 
+         pull(pdsi) -> vect_pdsi
+       
+       # vect_pdsi
+       c(vect_pdsi, tb_cor$awc, tb_cor$r)
+  
+     }
+}
+
+# ******
+
+c(var_pr, pet, vds, along = 3) %>%
+  
+  st_apply(c(1,2),
+           func_x,
+           FUTURE = T,
+           future.seed = NULL,
+           .fname = "time") -> s_pdsi
+
+s_pdsi %>% 
+  slice(time, 505) -> s_awc
+
+s_pdsi %>% 
+  slice(time, 506) -> s_cor
+
+s_pdsi %>%
+  slice(time, 1:504) %>% 
+  st_set_dimensions("time", values = date_vector) %>% 
+  aperm(c(2,3,1)) -> s_pdsi
+```
+
+This is how the “artificial” AWC layer looks like. We can see that much
+of central Europe was run with low AWC values (\< 50):
+
+``` r
+ggplot() +
+  geom_stars(data = s_awc) +
+  scale_fill_continuous_sequential(palette = "Viridis", 
+                                   rev = T, 
+                                   na.value = "grey80",
+                                   name = "mm") +
+  coord_fixed()
+```
+
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+### 6.1. Temporal correlation
+
+Unfortunately, the addition of AWC does not seem to improve results:
+
+``` r
+func_t_cor_map(s_pdsi, vds) -> cor_map
+
+ggplot() +
+  geom_stars(data = cor_map) +
+  scale_fill_continuous_diverging(palette = "Blue-Red", 
+                                  rev = T, 
+                                  na.value = "grey80", 
+                                  limits = c(-0.95,0.95),
+                                  name = "r") +
+  coord_fixed()
+```
+
+![](pdsi_tests_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+### 6.2. Spatial correlation
+
+And same spatially:
+
+``` r
+c(s_pdsi, vds, along = list(foo = c("era5", "vds"))) %>% 
+  split("foo") %>% 
+  as_tibble() %>% 
+  group_by(time) %>% 
+  summarize(cor = cor(era5, vds, use = "complete.obs")) -> t_cor
+
+t_cor %>%   
+  ggplot(aes(x = time, y = cor)) +
+  geom_point() +
+  geom_smooth()
+```
+
+![](pdsi_tests_files/figure-gfm/sp_6-1.png)<!-- -->
