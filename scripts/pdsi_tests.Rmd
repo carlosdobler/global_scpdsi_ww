@@ -219,13 +219,13 @@ t_cor %>%
 
 If I randomly choose a date when spatial correlation is **high-ish** (r = 0.65), the two maps look like this:    
 
-```{r rand_sp_1_1, fig.height=3.3, fig.width=10}
+```{r rand_sp_1_1, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.65)
 ```
 
 If I choose one when correlation is **low** (r = 0.1):    
 
-```{r rand_sp_1_2, fig.height=3.3, fig.width=10}
+```{r rand_sp_1_2, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.1)
 ```
 
@@ -350,12 +350,12 @@ t_cor %>%
 
 If I randomly choose a date when correlation was **high-ish** (r = 0.65) it looks like this:    
 
-```{r rand_sp_2_1, fig.height=3.3, fig.width=10}
+```{r rand_sp_2_1, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.65)
 ```
 And a date when correlation was **low** (r = 0.1):
 
-```{r rand_sp_2_2, fig.height=3.3, fig.width=10}
+```{r rand_sp_2_2, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.1)
 ```
 
@@ -475,13 +475,13 @@ t_cor %>%
 
 If I randomly choose a date with a **high-ish** correlation (r = 0.65) it looks like this:    
 
-```{r rand_sp_3_1, fig.height=3.3, fig.width=10}
+```{r rand_sp_3_1, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.65)
 ```
 
 And one with **low** correlation (r = 0.1):    
 
-```{r rand_sp_3_2, fig.height=3.3, fig.width=10}
+```{r rand_sp_3_2, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.1)
 ```
 
@@ -609,13 +609,13 @@ t_cor %>%
 
 If I randomly choose a date with **high-ish** correlations (r = 0.65):    
 
-```{r rand_sp_4_1, fig.height=3.3, fig.width=10}
+```{r rand_sp_4_1, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.65)
 ```
 
 And one with **low** correlations (r = 0.1):    
 
-```{r rand_sp_4_2, fig.height=3.3, fig.width=10}
+```{r rand_sp_4_2, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.1)
 ```
 

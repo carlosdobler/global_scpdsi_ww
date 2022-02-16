@@ -93,7 +93,7 @@ walk(1979:2020, function(yr){
     aperm(c(2,3,1)) -> s_monthly
   
   saveRDS(s_monthly,
-          str_glue("{dir_bucket_mine}/era/monthly/2m_temperature_min/era5_2mmintemp_dailymeans_monthlyres_{yr}.nc"))
+          str_glue("{dir_bucket_mine}/era/monthly/2m_temperature_min/era5_monthly_mean_daily_mintemp_{yr}.rds"))
   
   unlink(str_glue("{dir_disk}/daily_min_temperature_{yr}.nc"))
   
