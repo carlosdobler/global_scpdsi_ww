@@ -7,7 +7,9 @@
 #    devuelva estos warnings o no.
 # 3: versión para datos diarios (existe una versión ya, colgada en mi blog).
 penman_mod <-
-  function(Tmin, Tmax, U2, Ra=NA, lat=NA, Rs=NA, tsun=NA, CC=NA, ed=NA, Tdew=NA, RH=NA, P=NA, P0=NA, z=NA, crop='short', na.rm=FALSE) {
+  function(Tmin, Tmax, U2, Ra=NA, lat=NA, Rs=NA, tsun=NA, CC=NA, ed=NA, Tdew=NA, RH=NA, P=NA, P0=NA, z=NA, crop='short', 
+           co2adj = F, co2_ppm = NA,
+           na.rm=FALSE) {
     
     if (sum(is.na(Tmin),is.na(Tmax),is.na(U2))>0 & na.rm==FALSE) {
       stop('Error: Data must not contain NAs')
@@ -60,9 +62,9 @@ penman_mod <-
     T <- (Tmin+Tmax)/2
     
     # 1. Latent heat of vaporization, lambda (eq. 1.1)
-    lambda <- 2.501 - 2.361e-3*T
+    lambda <- 2.501 - 2.361e-3*T #  !!! constant in manual pg 4 = 2.45 (similar to results)
     
-    # 4. P: atmospheric pressure, kPa
+    # 4. P: atmospheric pressure, kPa   !!! skipped since I am providing P
     if (nrow(as.matrix(P))!=n) {
       if (length(P0)==n) {
         # estimate from sea level pressure (eq. 1.6)
@@ -74,10 +76,10 @@ penman_mod <-
       }
     }
     
-    # 3. Psychrometric constant, gamma (eq. 1.4)
-    gamma <- 1.63e-3*P/lambda
+    # 3. Psychrometric constant, gamma (eq. 1.4)  # !!! step 6: cp should be 1.013e-3
+    gamma <- 1.63e-3*P/lambda  
     
-    # 6. Saturation vapour pressure, ea
+    # 6. Saturation vapour pressure, ea  # !!! step 10 eq 2, 3, and 4
     # saturation vapour pressure at tmx (eq. 1.10, p. 66)
     etmx <- 0.611*exp((17.27*Tmax)/(Tmax+237.3))
     # saturation vapour pressure at tmn (eq. 1.10, p. 66)
@@ -85,15 +87,15 @@ penman_mod <-
     # mean saturation vapour pressure (eq. 1.11, p. 67)
     ea <- (etmx+etmn)/2
     
-    # 2. Slope of the saturation vapour pressure function, Delta (eq. 1.3)
+    # 2. Slope of the saturation vapour pressure function, Delta (eq. 1.3) # !!! step 4
     Delta <- 4099*ea/(T+237.3)^2
     #Delta <- 2504*exp((12.27*T)/(T+237.3))/(T+237.3)^2
     
     # 7. Actual vapour pressure, ed
     if(length(ed)!=n) {
-      if (length(Tdew)==n) {
+      if (length(Tdew)==n) { # !!! use Tdew since I don't have ed
         # (eq. 1.12, p. 67)
-        ed <- 0.611*exp((17.27*Tdew)/(Tdew+237.3))
+        ed <- 0.611*exp((17.27*Tdew)/(Tdew+237.3)) # !!! step 11 last eq
       } else if(length(RH)==n) {
         # (eq. 1.16, p. 68)
         ed <- RH / ((50/etmn)+(50/etmx))
@@ -103,7 +105,7 @@ penman_mod <-
       }
     }
     
-    # Sunset hour angle (needed if no radiation data is available)
+    # Sunset hour angle (needed if no radiation data is available)   # !!! skip as I provide radiation
     if (nrow(as.matrix(Ra))!=n | {nrow(as.matrix(Rs))!=n & nrow(as.matrix(tsun))==n}) {
       # Note: For the winter months and latitudes higher than 55º the following
       # equations have limited validity (Allen et al., 1994).
@@ -126,14 +128,14 @@ penman_mod <-
       omegas[sset<{-1}] <- max(omegas)
     }
     
-    # 9. Extraterrestrial radiation, Ra (MJ m-2 d-1)
+    # 9. Extraterrestrial radiation, Ra (MJ m-2 d-1) # !!! skip
     if (nrow(as.matrix(Ra))!=n) {
       # Estimate Ra (eq. 1.22)
       Ra <- 37.6*dr*(omegas*sin(latr)*sin(delta)+cos(latr)*cos(delta)*sin(omegas))
       Ra <- ifelse(Ra<0,0,Ra)
     }
     
-    # 11. Net radiation, Rn (MJ m-2 d-1)
+    # 11. Net radiation, Rn (MJ m-2 d-1)  # !!! skip
     # Net radiation is the sum of net short wave radiation Rns and net long wave
     # (incoming) radiation (Rnl).
     # Rs: daily incoming solar radiation (MJ m-2 d-1)
@@ -156,7 +158,7 @@ penman_mod <-
     # Note: mostly valid for z<6000 m and low air turbidity
     #if (ncol(as.matrix(z))==ncol(as.matrix(Tmin))) {
     if (!is.na(z)) {
-      Rso <- matrix(0.75+2e-5*z,n,m,byrow=TRUE) * Ra
+      Rso <- matrix(0.75+2e-5*z,n,m,byrow=TRUE) * Ra  # !!! step 16
     } else {
       Rso <- (0.75+2e-5*840) * Ra
     }
@@ -166,10 +168,10 @@ penman_mod <-
     alb <- 0.23
     # Rn, MJ m-2 d-1 (eq. 1.53)
     Rn <- (1-alb)*Rs - (ac*Rs/Rso+bc) * (a1+b1*sqrt(ed)) * 4.9e-9 *
-      ((273.15+Tmax)^4+(273.15+Tmin)^4)/2	
+      ((273.15+Tmax)^4+(273.15+Tmin)^4)/2	 # !!! step 18
     Rn[Rs==0] <- 0
     
-    # Soil heat flux density, G
+    # Soil heat flux density, G  # !!! ???
     # Using forward / backward differences for the first and last observations,
     # and central differences for the remaining ones.
     G <- rep(NA,length(T))
@@ -186,11 +188,22 @@ penman_mod <-
     } else {
       c1 <- 1600; c2 <- 0.38 # tall reference crop (e.g. alfalfa, 0.5 m)
     }
-    ET0 <- (0.408*Delta*(Rn-G) + gamma*(c1/(T+273))*U2*(ea-ed)) /
-      (Delta + gamma*(1+c2*U2))
+    
+    # CO2 adjustment?
+    if(isTRUE(co2adj)){
+      
+      ET0 <- (0.408*Delta*(Rn-G) + gamma*(c1/(T+273))*U2*(ea-ed)) /
+        (Delta + gamma*(1+U2 * (0.34 + 2.4e-4 * (co2_ppm - 300))))
+      
+    } else {
+      
+      ET0 <- (0.408*Delta*(Rn-G) + gamma*(c1/(T+273))*U2*(ea-ed)) /
+        (Delta + gamma*(1+c2*U2))
+      
+    }
     
     # Transform ET0 to mm month-1
-    mlen <- c(31,28,31,30,31,30,31,31,30,31,30,31) # NEW LINE
+    mlen <- c(31,28,31,30,31,30,31,31,30,31,30,31) #  !!! NEW LINE
     ET0 <- ifelse(ET0<0,0,ET0)*mlen[c]
     colnames(ET0) <- rep('ET0_pen',m)
     

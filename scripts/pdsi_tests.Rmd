@@ -4,26 +4,27 @@ author: "Carlos Dobler"
 output: github_document
 ---
 
-Here I show results of a series of test runs for calculating scPDSI with the R package `scpdsi`. All tests were ran for a region centered on ~~Mexico~~ Central Europe to reduce processing times. Of the variables that scPDSI asks for, the only ones that would vary were monthly precipitation and monthly potential evapotranspiration (PET). AWC remained constant (100 mm), and the start and end dates for calibration included the whole period. I used four PET formulations: one uses the "raw" potential evaporation from ERA5 Reanalysis data (no transpiration); the other three were calculated with the R package `SPEI` using various ERA5 Reanalysis variables. 
+Here I show results of a series of test runs for calculating scPDSI with the R package `scpdsi`. All tests were ran for a region centered on ~~Mexico~~ Central Europe to reduce processing times. Of the variables that scPDSI asks for, the only ones that would vary were monthly precipitation and monthly potential evapotranspiration (PET). AWC remained constant (100 mm), and the start and end dates for calibration included the whole period (1979-2020). I used four PET formulations: one uses the "raw" potential evaporation from ERA5 Reanalysis data (no transpiration); the other three were calculated with the R package `SPEI` using various ERA5 Reanalysis variables. 
 
 
 ### Sections:
 scPDSI calculated:     
-[1. ...with Potential Evaporation (ERA5 data)](#1-with-era5s-potential-evaporation)           
-[2. ...with Thornthwaite's formulation](#2-with-thornthwaite)    
-[3. ...with Hargreaves' formulation](#3-with-hargreaves)    
-[4. ...with Penman-Monteith's formulation](#4-with-penman)    
-    
+[1. ...with ERA5's Potential Evaporation](#1-pdsi-with-era5s-potential-evaporation)           
+[2. ...with Thornthwaite's formulation](#2-pdsi-with-thornthwaites-pet-formulation)    
+[3. ...with Hargreaves' formulation](#3-pdsi-with-hargreaves-pet-formulation)    
+[4. ...with Penman-Monteith's formulation](#4-pdsi-with-penman-monteiths-pet-formulation)   
+[5. ...with Penman-M + AWC](#5-pdsi-with-penman-m--awc)    
+
 NEW!!!    
-[5. ...with Penman + elevation](#5-penman--elevation)    
-[6. ...with Penman + elevation + AWC](#6-penman--elevation--awc)    
+[6. ...with Penman-M + CO2 adjustment](#6-penman-m-with-co2-adjustment)    
+[7. Comparison with REMO](#8-remo-vs-penman-no-co2-adj-vs-penman-w-co2-adj-vs-van-der-schrier)
 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE,
-                      fig.align = 'center')
+                      out.width = '80%')
 
 source(here::here("scripts/00-set-up.R"))
 
@@ -110,18 +111,17 @@ func_sp_comparison <- function(thres){
                             TRUE ~ pdsi)) %>% 
     ggplot(aes(x = longitude, y = latitude, fill = pdsi)) +
     geom_raster() +
-    scale_fill_continuous_diverging(palette = "Blue-Red", rev = T, na.value = "grey80") +
+    scale_fill_continuous_divergingx(palette = "Spectral", rev = F, na.value = "grey80") +
     facet_wrap(~src, ncol = 2) +
     coord_equal() +
     labs(subtitle = t_time)
   
 }
 
-
 ```
 
 
-## 1. ...with ERA5's potential evaporation
+## 1. PDSI with ERA5's potential evaporation
 
 ```{r}
 
@@ -143,11 +143,13 @@ c(s_pdsi, mask) %>%
   mutate(X = ifelse(is.na(m), NA, X)) %>% 
   select(X) -> s_pdsi
 
+s_pdsi_evap <- s_pdsi
+
 ```
 
-Mapping a random date:    
+Map of a random date:    
   
-```{r rand_date_1}
+```{r rand_date_1, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 sample(date_vector, 1) -> d
 
@@ -158,8 +160,8 @@ ggplot() +
                mutate(X = case_when(X < -5 ~ -5,
                                     X > 5 ~ 5,
                                     TRUE ~ X))) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "Spectral", 
+                                  rev = F, 
                                   na.value = "grey80",
                                   name = "PDSI"
                                   ) +
@@ -169,16 +171,16 @@ ggplot() +
 ```
 
 ### 1.1. Temporal correlation
-The following figure correlates my results against Van der Schrier's PDSI time series on a per-pixel basis. Overall, correlation coefficients are low, with the highest values in the Alps.    
+The following figure correlates my results against van der Schrier's on a per-pixel basis (i.e. time-series vs time-series). Overall, correlation coefficients are low, with the highest values in the Alps.    
 
-```{r cor_map_1}
+```{r cor_map_1, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
 ggplot() +
   geom_stars(data = cor_map) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                  rev = F, 
                                   na.value = "grey80", 
                                   limits = c(-0.95,0.95),
                                   name = "r") +
@@ -188,21 +190,21 @@ ggplot() +
 
 If I randomly choose a pixel with a **high** correlation coefficient (r = 0.8), its time-series look like this:    
 
-```{r rand_ts_1_1, fig.height=2.5, fig.width=7}
+```{r rand_ts_1_1, fig.height=2.5}
 func_ts_comparison(0.8)
 ```
 
-If I choose one with a **low** correlation coefficient (r = 0.1):    
+If I choose one with a **low** correlation coefficient (r = 0.15):    
 
-```{r rand_ts_1_2, fig.height=2.5, fig.width=7}
-func_ts_comparison(0.1)
+```{r rand_ts_1_2, fig.height=2.5}
+func_ts_comparison(0.15)
 ```
 
 
 ### 1.2. Spatial correlation
-The following figure shows the spatial correlation between my results and Van der Schrier's PDSI on a monthly basis (i.e. my resulting map at t *n* vs. VDS resulting map at t *n*). Correlation coefficients fluctuate in a "wave-like" form:   
+The following figure shows the spatial correlation between my results and van der Schrier's on a monthly basis (i.e. my resulting map at t*n* vs. VDS at t*n*). We can see correlation coefficients fluctuate in a "wave-like" form:   
 
-```{r sp_1, fig.height=2.5, fig.width=7}
+```{r sp_1, fig.height=2.5}
 
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
   split("foo") %>% 
@@ -217,13 +219,13 @@ t_cor %>%
 
 ```
 
-If I randomly choose a date when spatial correlation is **high-ish** (r = 0.65), the two maps look like this:    
+If I randomly choose a date with **high-ish** spatial correlation (r = 0.65), the two maps look like this:
 
 ```{r rand_sp_1_1, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.65)
 ```
 
-If I choose one when correlation is **low** (r = 0.1):    
+If I choose one with **low** correlation (r = 0.1):    
 
 ```{r rand_sp_1_2, fig.height=3.3, fig.width=7}
 func_sp_comparison(0.1)
@@ -231,7 +233,7 @@ func_sp_comparison(0.1)
 
 
 
-## 2. ...with Thornthwaite
+## 2. PDSI with Thornthwaite's PET formulation
 Thornthwaite's PET formulation uses two variables: average temperature and latitude.    
 ```{r}
 
@@ -275,11 +277,13 @@ c(s_pdsi, mask) %>%
   mutate(X = ifelse(is.na(m), NA, X)) %>% 
   select(X) -> s_pdsi
 
+s_pdsi_th <- s_pdsi
+
 ```
 
-Mapping a random date:    
+Map of a random date:    
 
-```{r rand_date_2}
+```{r rand_date_2, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 sample(date_vector, 1) -> d
 
@@ -290,8 +294,8 @@ ggplot() +
                mutate(X = case_when(X < -5 ~ -5,
                                     X > 5 ~ 5,
                                     TRUE ~ X))) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "Spectral", 
+                                  rev = F, 
                                   na.value = "grey80",
                                   name = "PDSI") +
   coord_fixed() +
@@ -301,16 +305,16 @@ ggplot() +
 
 
 ### 2.1. Temporal correlation
-Per-pixel correlation of my results based on Thornthwaite vs Van der Schrier's shows a drastic improvement over previous results. All cells show positive correlations, and with high a coefficient. Lowest values are found over Austria.    
+Per-pixel correlation of my results based on Thornthwaite vs van der Schrier's shows a drastic improvement over previous results. All cells show positive correlations, and with high coefficients. Lowest values are found over Austria.    
 
-```{r cor_map_2}
+```{r cor_map_2, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
 ggplot() +
   geom_stars(data = cor_map) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                  rev = F, 
                                   na.value = "grey80", 
                                   limits = c(-0.95,0.95),
                                   name = "r") +
@@ -318,22 +322,22 @@ ggplot() +
 
 ```
 
-If I randomly choose a pixel with **high** correlation (r = 0.8), the time series look like this:    
+If I randomly choose a pixel with **high** correlation (r = 0.8), its time-series look like this:    
 
-```{r rand_ts_2_1, fig.height=2.5, fig.width=7}
+```{r rand_ts_2_1, fig.height=2.5}
 func_ts_comparison(0.8) 
 ```
 
 And one with **low** correlation (r = 0.15):    
 
-```{r rand_ts_2_2, fig.height=2.5, fig.width=7}
+```{r rand_ts_2_2, fig.height=2.5}
 func_ts_comparison(0.15)
 ```
 
 ### 2.2. Spatial correlation
-Spatially, correlation between my results and Van der Schrier's fluctuates around ~0.1 and ~0.7, again, in a "wave-like" form:    
+Spatially, correlation between my results and van der Schrier's fluctuates around ~0.1 and ~0.7, again, in a "wave-like" form:    
 
-```{r sp_2, fig.height=2.5, fig.width=7}
+```{r sp_2, fig.height=2.5}
 
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
   split("foo") %>% 
@@ -350,18 +354,19 @@ t_cor %>%
 
 If I randomly choose a date when correlation was **high-ish** (r = 0.65) it looks like this:    
 
-```{r rand_sp_2_1, fig.height=3.3, fig.width=7}
+```{r rand_sp_2_1, fig.height=3.3}
 func_sp_comparison(0.65)
 ```
+
 And a date when correlation was **low** (r = 0.1):
 
-```{r rand_sp_2_2, fig.height=3.3, fig.width=7}
+```{r rand_sp_2_2, fig.height=3.3}
 func_sp_comparison(0.1)
 ```
 
 
 
-## 3. ...with Hargreaves
+## 3. PDSI with Hargreaves' PET formulation
 Hargraves' PET formulation uses three variables: maximum temperature, minimum temperature, and radiation.    
 ```{r}
 
@@ -400,11 +405,13 @@ c(s_pdsi, mask) %>%
   mutate(X = ifelse(is.na(m), NA, X)) %>% 
   select(X) -> s_pdsi
 
+s_pdsi_h <- s_pdsi
+
 ```
 
-Mapping a random date:    
+Map of a random date:    
 
-```{r rand_date_3}
+```{r rand_date_3, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 sample(date_vector, 1) -> d
 
@@ -415,8 +422,8 @@ ggplot() +
                mutate(X = case_when(X < -5 ~ -5,
                                     X > 5 ~ 5,
                                     TRUE ~ X))) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "Spectral", 
+                                  rev = F, 
                                   na.value = "grey80",
                                   name = "PDSI") +
   coord_fixed() +
@@ -426,16 +433,16 @@ ggplot() +
 
 
 ### 3.1. Temporal correlation
-Hargraves seem to do worse than Thornthwaite on a per-pixel basis. Correlation coefficients decline in general, and in some small areas are now slightly negative. Highest values are in the west Balkans and southern Alps.    
+PDSI calculated with Hargreaves produces very similar results than when using Thornthwaite on a per-pixel basis:    
 
-```{r cor_map_3}
+```{r cor_map_3, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
 ggplot() +
   geom_stars(data = cor_map) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                  rev = F, 
                                   na.value = "grey80", 
                                   limits = c(-0.95,0.95),
                                   name = "r") +
@@ -445,20 +452,20 @@ ggplot() +
 
 If I randomly choose a pixel with **high** correlation (r = 0.8), its time-series looks like this:    
 
-```{r rand_ts_3_1, fig.height=2.5, fig.width=7}
+```{r rand_ts_3_1, fig.height=2.5}
 func_ts_comparison(0.8)
 ```
 
 And one with **low** correlation (r = 0.1):    
 
-```{r rand_ts_3_2, fig.height=2.5, fig.width=7}
+```{r rand_ts_3_2, fig.height=2.5}
 func_ts_comparison(0.1) 
 ```
 
 ### 3.2. Spatial correlation
-Interestingly, the spatial correlation between my results and Van der Schrier's show an "arching" trend over time, with its "peak" around 2000:     
+Similarly, the spatial correlation between my results and van der Schrier's show a "wave-like" trend over time:     
 
-```{r sp_3, fig.height=2.5, fig.width=7}
+```{r sp_3, fig.height=2.5}
 
 c(s_pdsi, vds, along = list(foo = c("vds", "era5"))) %>% 
   split("foo") %>% 
@@ -487,8 +494,8 @@ func_sp_comparison(0.1)
 
 
 
-## 4. ...with Penman
-Penman-Monteith's PET formulation can include several variables; some are used to derive others. In this case, I used: maximum temperature, minimum temperature, wind speed (it should be at 2m but I used at 10m), external radiance (I used "top of atmosphere"), incoming radiance, dewpoint temperature (to derive vapor pressure), and surface pressure.     
+## 4. PDSI with Penman-Monteith's PET formulation
+Penman-Monteith's PET formulation can include several variables; some are used to derive others. In this case, I used: maximum temperature, minimum temperature, wind speed (it should be at 2m but I used at 10m), external radiance (I used "top of atmosphere"), incoming radiance, dewpoint temperature (to derive vapor pressure), surface pressure, and elevation (I used ERA5 geopotential height divided by the Earth's gravitational acceleration, g = 9.8 m/s).     
 
 ```{r}
 
@@ -496,136 +503,6 @@ Penman-Monteith's PET formulation can include several variables; some are used t
 source(here::here("scripts", "penman_mod.R"))
 
 c(var_tmin, var_tmax, var_wind, var_ra, var_rs, var_dewpoint, var_pressure, along = 3) -> stack
-
-stack %>% 
-  st_apply(c(1,2), function(x){
-    
-    penman_mod(Tmin = x[1:504],
-               Tmax = x[505:1008],
-               U2 = x[1009:1512],
-               Ra = x[1513:2016],
-               Rs = x[2017:2520],
-               Tdew = x[2521:3024],
-               P = x[3025:3528])
-    
-  },
-  FUTURE = T,
-  .fname = "time") %>% 
-  st_set_dimensions("time", values = date_vector) %>% 
-  aperm(c(2,3,1)) -> pet
-
-# scpdsi
-c(var_pr, pet, along = 3) %>% 
-  st_apply(c(1,2), function(x){
-    
-    pdsi(P = x[1:504], 
-         PE = x[505:1008], 
-         sc = T)$X %>% as.vector()
-    
-  },
-  FUTURE = T,
-  future.seed = NULL,
-  .fname = "time") %>% 
-  
-  st_set_dimensions("time", values = date_vector) %>% 
-  aperm(c(2,3,1)) -> s_pdsi
-
-c(s_pdsi, mask) %>% 
-  mutate(X = ifelse(is.na(m), NA, X)) %>% 
-  select(X) -> s_pdsi
-
-```
-
-Mapping a random date:    
-
-```{r rand_date_4}
-
-sample(date_vector, 1) -> d
-
-ggplot() +
-  geom_stars(data = s_pdsi %>% 
-               filter(time == d) %>% 
-               adrop() %>% 
-               mutate(X = case_when(X < -5 ~ -5,
-                                    X > 5 ~ 5,
-                                    TRUE ~ X))) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
-                                  na.value = "grey80",
-                                  name = "Index") +
-  coord_fixed() +
-  labs(subtitle = d)
-
-```
-
-
-### 4.1. Temporal correlation
-Again, we don't see much improvement over Thornthwaite's. Spatial patterns and magnitudes of correlation are **extremely** similar as when using Hargreaves:     
-
-```{r cor_map_4}
-
-func_t_cor_map(s_pdsi, vds) -> cor_map
-
-ggplot() +
-  geom_stars(data = cor_map) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
-                                  na.value = "grey80", 
-                                  limits = c(-0.95,0.95),
-                                  name = "r") +
-  coord_fixed()
-
-```
-
-If I randomly choose a pixel with **high** correlation (r = 0.8):    
-
-```{r rand_ts_4_1, fig.height=2.5, fig.width=7}
-func_ts_comparison(0.8)
-```
-
-And one with **low** correlation (r = 0.1):    
-
-```{r rand_ts_4_2, fig.height=2.5, fig.width=7}
-func_ts_comparison(0.1) 
-```
-
-### 4.2. Spatial correlation
-Similarly, on a spatial basis, correlations display an "arched" trend over time:    
-
-```{r sp_4, fig.height=2.5, fig.width=7}
-
-c(s_pdsi, vds, along = list(foo = c("era5", "vds"))) %>% 
-  split("foo") %>% 
-  as_tibble() %>% 
-  group_by(time) %>% 
-  summarize(cor = cor(era5, vds, use = "complete.obs")) -> t_cor
-
-t_cor %>%   
-  ggplot(aes(x = time, y = cor)) +
-  geom_point() +
-  geom_smooth()
-
-```
-
-If I randomly choose a date with **high-ish** correlations (r = 0.65):    
-
-```{r rand_sp_4_1, fig.height=3.3, fig.width=7}
-func_sp_comparison(0.65)
-```
-
-And one with **low** correlations (r = 0.1):    
-
-```{r rand_sp_4_2, fig.height=3.3, fig.width=7}
-func_sp_comparison(0.1)
-```
-
-## 5. Penman + elevation
-
-Elevation is an additional variable that can be used to estimate PET under the Penman-Monteith formulation. I used ERA5 geopotential height divided by the Earth's gravitational acceleration, g (= 9.80665 m s-2).    
-
-```{r}
-
-# pet
 abind(stack[[1]], var_z[[1]], along = 3) -> stack_array
 dim(stack_array) <- c(x = 78, y = 60, time = 3529)
 
@@ -668,19 +545,44 @@ c(s_pdsi, mask) %>%
   mutate(X = ifelse(is.na(m), NA, X)) %>% 
   select(X) -> s_pdsi
 
+s_pdsi_pm <- s_pdsi
+
 ```
 
-### 5.1. Temporal correlation
-Elevation doesn't seem to improve things on a per-pixel basis:     
+Map of a random date:    
 
-```{r cor_map_5}
+```{r rand_date_4, fig.width=4.4, fig.height=3.4, out.width='50%'}
+
+sample(date_vector, 1) -> d
+
+ggplot() +
+  geom_stars(data = s_pdsi %>% 
+               filter(time == d) %>% 
+               adrop() %>% 
+               mutate(X = case_when(X < -5 ~ -5,
+                                    X > 5 ~ 5,
+                                    TRUE ~ X))) +
+  scale_fill_continuous_divergingx(palette = "Spectral", 
+                                  rev = F, 
+                                  na.value = "grey80",
+                                  name = "Index") +
+  coord_fixed() +
+  labs(subtitle = d)
+
+```
+
+
+### 4.1. Temporal correlation
+Correlation coefficients on a per-pixel basis are very similar to those obtained with Hargreaves' and Thornthwaite's PET formulations:     
+
+```{r cor_map_4, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
 ggplot() +
   geom_stars(data = cor_map) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                  rev = F, 
                                   na.value = "grey80", 
                                   limits = c(-0.95,0.95),
                                   name = "r") +
@@ -688,10 +590,22 @@ ggplot() +
 
 ```
 
-### 5.2. Spatial correlation
-And spatially, variability in correlation coefficients looks very similar as when I was **not** using elevation:    
+If I randomly choose a pixel with **high** correlation (r = 0.8):    
 
-```{r sp_5, fig.height=2.5, fig.width=7}
+```{r rand_ts_4_1, fig.height=2.5, fig.width=7}
+func_ts_comparison(0.8)
+```
+
+And one with **low** correlation (r = 0.1):    
+
+```{r rand_ts_4_2, fig.height=2.5, fig.width=7}
+func_ts_comparison(0.15) 
+```
+
+### 4.2. Spatial correlation
+The spatial correlation trend also looks very similar to previous results, albeit with a slight increase over time:    
+
+```{r sp_4, fig.height=2.5, fig.width=7}
 
 c(s_pdsi, vds, along = list(foo = c("era5", "vds"))) %>% 
   split("foo") %>% 
@@ -706,9 +620,22 @@ t_cor %>%
 
 ```
 
-## 6. Penman + elevation + AWC
+If I randomly choose a date with **high-ish** correlations (r = 0.65):    
 
-AWC is a variable required in the calculation of PDSI. I found several AWC datasets, but all of them are quite complicated to obtain and process (they are distributed in either antique, bizarre, or proprietary data formats). Before going through the pain of dealing with this, I ran an experiment to see to what extent AWC could improve results. The experiment consists of altering AWC values iteratively for each pixel and choose the one that gets me "the best" PDSI (i.e. the one that correlates the most with Van der Schrier). Thus, while in the former runs AWC was kept constant (100 mm), here it can have values from 5 to 215 mm.    
+```{r rand_sp_4_1, fig.height=3.3, fig.width=7}
+func_sp_comparison(0.65)
+```
+
+And one with **low** correlations (r = 0.1):    
+
+```{r rand_sp_4_2, fig.height=3.3, fig.width=7}
+func_sp_comparison(0.1)
+```
+
+
+## 5. PDSI with Penman-M + AWC
+
+AWC is a variable required in the calculation of PDSI. I found several AWC datasets, but all of them are quite complicated to obtain and process (they are distributed in either antique, bizarre, or proprietary data formats). Before going through the pain of dealing with this, I ran an experiment to see to what extent AWC could improve results. The experiment consists of altering AWC values iteratively for each pixel and choose the one that gets me "the best" PDSI (i.e. the one that correlates the highest with van der Schrier). Thus, while in the former runs AWC was kept constant (100 mm), here it can have values from 5 to 215 mm for each pixel.    
 
 ```{r}
 
@@ -767,12 +694,13 @@ s_pdsi %>%
   st_set_dimensions("time", values = date_vector) %>% 
   aperm(c(2,3,1)) -> s_pdsi
 
+s_pdsi_pmawc <- s_pdsi
 
 ```
 
-This is how the "artificial" AWC layer looks like. We can see that in much of central Europe, the "best" PDSI was obtained when AWC values were low (< 50 mm):    
+This is how the "artificial" AWC layer looks like:    
 
-```{r awc}
+```{r awc, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 ggplot() +
   geom_stars(data = s_awc) +
@@ -785,17 +713,17 @@ ggplot() +
 ```
 
 
-### 6.1. Temporal correlation
-Unfortunately, AWC variability does not seem to improve results:    
+### 5.1. Temporal correlation
+Unfortunately, the incorporation of AWC does not seem to change results in a substantial way:    
 
-```{r cor_map_6}
+```{r cor_map_6, fig.width=4.4, fig.height=3.4, out.width='50%'}
 
 func_t_cor_map(s_pdsi, vds) -> cor_map
 
 ggplot() +
   geom_stars(data = cor_map) +
-  scale_fill_continuous_diverging(palette = "Blue-Red", 
-                                  rev = T, 
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                  rev = F, 
                                   na.value = "grey80", 
                                   limits = c(-0.95,0.95),
                                   name = "r") +
@@ -803,7 +731,7 @@ ggplot() +
 
 ```
 
-### 6.2. Spatial correlation
+### 5.2. Spatial correlation
 And same spatially:    
 
 ```{r sp_6, fig.height=2.5, fig.width=7}
@@ -820,6 +748,410 @@ t_cor %>%
   geom_smooth()
 
 ```
+
+*How do all previous results compare (i.e. correlate) to each other?* With the exception of those obtained with ERA5's potential evaporation (section 1), the rest of the results correlate extremely well with each other - in other words, they are **almost** the same.
+
+```{r comp_all, fig.height=7.5}
+
+c("evap", "thorn", "harg", "penm", "penm_awc") -> all_s_names
+
+c(s_pdsi_evap,
+  s_pdsi_th,
+  s_pdsi_h,
+  s_pdsi_pm,
+  s_pdsi_pmawc) %>% 
+  set_names(all_s_names) -> all_s
+
+tibble(ds1 = 1:5) %>%
+  expand(ds1, ds2 = ds1) %>% 
+  filter(ds1 < ds2) -> ds
+
+pmap_dfr(ds, function(ds1, ds2){
+
+  func_t_cor_map(
+    all_s %>% select(ds1),
+    all_s %>% select(ds2)) %>% 
+    setNames("r") %>% 
+    as_tibble() %>% 
+    mutate(comp = str_glue("{all_s_names[ds1]}_vs_{all_s_names[ds2]}"))
+  
+}) -> tb_comp
+
+ggplot(tb_comp, aes(x = longitude, y = latitude, fill = r)) +
+  geom_raster() +
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                   rev = F, 
+                                   na.value = "grey80",
+                                   name = "r") +
+  facet_wrap(~comp, ncol = 3) +
+  coord_equal()
+  
+
+```
+
+
+## 6. Penman-M with CO2 adjustment
+
+Here I incorporated the CO2 adjustment into Penman-M's PET formulation following [Yang et al. 2019](https://doi.org/10.1038/s41558-018-0361-0)
+
+```{r}
+
+tibble(date = date_vector) %>% 
+  mutate(co2 = case_when(year(date) < 1980 ~ 331,
+                         year(date) < 1990 ~ 345,
+                         year(date) < 2000 ~ 360,
+                         year(date) < 2010 ~ 379,
+                         year(date) >= 2010 ~ 402)) %>% 
+  pull(co2) -> co2
+
+st_as_stars(stack_array) %>% 
+  st_apply(c(1,2), function(x){
+    
+    penman_mod(Tmin = x[1:504],
+               Tmax = x[505:1008],
+               U2 = x[1009:1512],
+               Ra = x[1513:2016],
+               Rs = x[2017:2520],
+               Tdew = x[2521:3024],
+               P = x[3025:3528],
+               z = x[3529],
+               co2adj = T,
+               co2_ppm = co2)
+    
+  },
+  FUTURE = T,
+  .fname = "time") %>% 
+  aperm(c(2,3,1)) -> pet
+
+st_dimensions(pet) <- st_dimensions(var_tmin)
+
+# scpdsi
+c(var_pr, pet, along = 3) %>% 
+  st_apply(c(1,2), function(x){
+    
+    pdsi(P = x[1:504], 
+         PE = x[505:1008], 
+         sc = T)$X %>% as.vector()
+    
+  },
+  FUTURE = T,
+  future.seed = NULL,
+  .fname = "time") %>% 
+  
+  st_set_dimensions("time", values = date_vector) %>% 
+  aperm(c(2,3,1)) -> s_pdsi
+
+c(s_pdsi, mask) %>% 
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> s_pdsi
+
+s_pdsi_pmco2 <- s_pdsi
+
+```
+
+### 7.1. Temporal correlation
+Results show a similar pattern of temporal correlation with van der Schrier than previous results:
+
+```{r cor_map_7, fig.width=4.4, fig.height=3.4, out.width='50%'}
+
+func_t_cor_map(s_pdsi, vds) -> cor_map
+
+ggplot() +
+  geom_stars(data = cor_map) +
+  scale_fill_continuous_divergingx(palette = "PuOr", 
+                                  rev = F, 
+                                  na.value = "grey80", 
+                                  limits = c(-0.95,0.95),
+                                  name = "r") +
+  coord_fixed()
+
+```
+
+### 7.2. Spatial correlation
+Same for spatial correlation:
+
+```{r sp_7, fig.height=2.5}
+
+c(s_pdsi, vds, along = list(foo = c("era5", "vds"))) %>% 
+  split("foo") %>% 
+  as_tibble() %>% 
+  group_by(time) %>% 
+  summarize(cor = cor(era5, vds, use = "complete.obs")) -> t_cor
+
+t_cor %>%   
+  ggplot(aes(x = time, y = cor)) +
+  geom_point() +
+  geom_smooth()
+
+```
+
+## 8. REMO vs. Penman (no CO2 adj.) vs. Penman (w/ CO2 adj.) vs. van der Schrier 
+
+In this section I compare some of my previous results with REMO 2015 data. In order to compare, I sliced  everything temporally so that it would correspond to +1 degree world. 
+
+### 8.1. Mean annual comparisons
+This figure shows mean annual scPDSI maps for different models. REMO diverges considerably from the others:
+
+```{r pdsi_ann, fig.height=5.3}
+
+# remo
+
+list(remo_had, remo_mpi, remo_nor) %>%
+  map(function(s){
+    
+    s %>% 
+      st_apply(c(1,2),
+               mean,
+               na.rm = T)
+    
+  }) -> mann
+
+mann %>% 
+  {do.call(c, c(., along = "model"))} %>% 
+  st_apply(c(1,2),
+           mean,
+           na.rm = T,
+           .fname = "X") -> mann_remo
+
+c(mann_remo, mask[,,,1, drop = T]) %>%
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> mann_remo
+
+# pm
+
+s_pdsi_pm %>% 
+  filter(year(time) %in% seq(2000,2020)) -> s_pdsi_pm_1deg
+
+s_pdsi_pm_1deg %>% 
+  st_apply(c(1,2), mean, na.rm = T) -> mann_pm
+
+# pm co2
+
+s_pdsi_pmco2 %>% 
+  filter(year(time) %in% seq(2000,2020)) -> s_pdsi_pmco2_1deg
+
+s_pdsi_pmco2_1deg %>% 
+  st_apply(c(1,2), mean, na.rm = T) -> mann_pmco2
+
+# vds
+vds %>% 
+   filter(year(time) %in% seq(2000,2020)) -> s_pdsi_vds_1deg
+
+s_pdsi_vds_1deg %>% 
+   st_apply(c(1,2), mean, na.rm = T) -> mann_vds
+
+# *****************
+
+c(mann_remo, mann_vds, mann_pm, mann_pmco2, 
+  along = list(ds = c("REMO", "VDS", "PM", "PMCO2"))) %>% 
+  mutate(X = case_when(X > 3 ~ 3,
+                       X < -3 ~ -3,
+                       TRUE ~ X)) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~ds) +
+      scale_fill_continuous_divergingx(breaks = seq(-3,3,by=1.5),
+                                      labels = c("< -3", "-1.5", "0", "1.5", "> 3"),
+                                      name = "PDSI",
+                                      rev = F,
+                                      palette = "Spectral") +
+      coord_fixed()
+  }
+
+```
+
+Differences can better be appreciated in the following figure, which compares (substracts) mean annual scPDSI between pairs of models:
+
+```{r comp_ann, fig.height=7.5}
+
+c(mann_remo, mann_vds, mann_pm, mann_pmco2, 
+  along = list(ds = c("REMO", "VDS", "PM", "PMCO2"))) %>% 
+  split("ds") %>% 
+  mutate(REMO_VDS = REMO - VDS,
+         REMO_PM = REMO - PM,
+         REMO_PMCO2 = REMO - PMCO2,
+         VDS_PM = VDS - PM,
+         VDS_PMCO2 = VDS - PMCO2,
+         PM_PMCO2 = PM - PMCO2) %>%
+  select(-(1:4)) %>%
+  merge(name = "comp") -> mann_comparisons
+
+mann_comparisons %>% 
+  st_get_dimension_values("comp") %>% 
+  str_replace("_", " - ") %>% 
+  {st_set_dimensions(mann_comparisons, "comp", values = .)} -> mann_comparisons
+
+mann_comparisons %>% 
+  mutate(X = case_when(X > 4 ~ 4,
+                       X < -4 ~ -4,
+                       TRUE ~ X)) -> mann_comparisons
+
+ggplot() +
+  geom_stars(data = mann_comparisons) +
+  facet_wrap(~comp, ncol = 2) +
+  scale_fill_continuous_divergingx(breaks = seq(-4,4,by=2),
+                                  labels = c("< -4", "-2", "0", "2", "> 4"),
+                                  name = "diff (PDSI)",
+                                  palette = "Geyser",
+                                  rev = T) +
+  coord_fixed()
+
+```
+
+### 8.2. Mean seasonal cycle comparisons
+The following figure shows mean monthly scPDSI maps for different models. Again, we see REMO diverges considerably from the others.
+
+Note: I kept scratching my head and checked my script several times in an attempt to figure out why the differences **between months** were so small (i.e. for a given model, months look almost the same). I think the answer is related to temporal autocorrelation - meaning, drought in a given month is influenced by the previous month. From one month to another, PDSI will look very similar. When I average all 21 months of the +1 deg period, these similarities propagate, reducing the differences between months.  
+
+```{r pdsi_msc, fig.height=5.5}
+
+# remo
+
+list(remo_had, remo_mpi, remo_nor) %>%
+  map(function(s){
+    
+    map(seq(12), function(mth){
+      
+      s %>% 
+        filter(month(time) == mth) %>% 
+        st_apply(c(1,2),
+                 mean,
+                 na.rm = T)
+      
+    }) %>% 
+      {do.call(c, c(., along = "mth"))} %>% 
+      st_set_dimensions("mth", values = month.abb)
+    
+  }) -> msc
+
+msc %>% 
+  {do.call(c, c(., along = "model"))} %>% #as_tibble() %>% group_by(model) %>% slice(1)
+  st_apply(c(1,2,3),
+           mean,
+           na.rm = T,
+           .fname = "X") -> msc_remo
+
+c(msc_remo, 
+  mask[,,,1:12] %>% st_set_dimensions(3, names = "mth", values = month.abb)) %>%
+  mutate(X = ifelse(is.na(m), NA, X)) %>% 
+  select(X) -> msc_remo
+
+# pm
+
+map(seq(12), function(mth){
+  
+  s_pdsi_pm_1deg %>% 
+    filter(month(time) == mth) %>% 
+    st_apply(c(1,2),
+             mean,
+             na.rm = T,
+             .fname = "X")
+  
+}) %>% 
+  {do.call(c, c(., along = "mth"))} %>% 
+  st_set_dimensions("mth", values = month.abb) -> msc_pm
+
+# pm + co2
+
+map(seq(12), function(mth){
+  
+  s_pdsi_pmco2_1deg %>% 
+    filter(month(time) == mth) %>% 
+    st_apply(c(1,2),
+             mean,
+             na.rm = T,
+             .fname = "X")
+  
+}) %>% 
+  {do.call(c, c(., along = "mth"))} %>% 
+  st_set_dimensions("mth", values = month.abb) -> msc_pmco2
+
+# vds
+
+map(seq(12), function(mth){
+  
+  s_pdsi_vds_1deg %>% 
+    filter(month(time) == mth) %>% 
+    st_apply(c(1,2),
+             mean,
+             na.rm = T,
+             .fname = "X")
+  
+}) %>% 
+  {do.call(c, c(., along = "mth"))} %>% 
+  st_set_dimensions("mth", values = month.abb) -> msc_vds
+
+# *****************
+
+c(msc_remo, msc_vds, msc_pm, msc_pmco2, 
+  along = list(ds = c("REMO", "VDS", "PM", "PMCO2"))) %>% 
+  mutate(X = case_when(X > 3 ~ 3,
+                       X < -3 ~ -3,
+                       TRUE ~ X)) %>%
+  filter(mth %in% c("Jan", "Apr", "Jul", "Oct")) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(mth~ds) +
+      scale_fill_continuous_divergingx(breaks = seq(-3,3,by=1.5),
+                                      labels = c("< -3", "-1.5", "0", "1.5", "> 3"),
+                                      name = "PDSI",
+                                      rev = F,
+                                      palette = "Spectral") +
+      coord_fixed()
+  }
+
+
+```
+
+This figure shows differences in PDSI between different models for different months (PM without CO2 adjustment is not shown here as we have seen it's essentially the same as the one with adjustment).
+
+```{r comp_msc, fig.height=5.5}
+
+c(msc_remo, msc_vds, msc_pmco2, 
+  along = list(ds = c("REMO", "VDS", "PMCO2"))) %>%
+  split("ds") %>% 
+  mutate(REMO_VDS = REMO - VDS,
+         REMO_PMCO2 = REMO - PMCO2,
+         VDS_PMCO2 = VDS - PMCO2) %>% 
+  select(4:6) %>% 
+  merge(name = "comp") %>% 
+  filter(mth %in% c("Jan", "Apr", "Jul", "Oct")) -> msc_comparisons
+
+msc_comparisons %>% 
+  st_get_dimension_values("comp") %>% 
+  str_replace("_", " - ") %>% 
+  {st_set_dimensions(msc_comparisons, "comp", values = .)} -> msc_comparisons
+
+msc_comparisons %>% 
+  mutate(X = case_when(X > 4 ~ 4,
+                       X < -4 ~ -4,
+                       TRUE ~ X)) -> msc_comparisons
+
+ggplot() +
+  geom_stars(data = msc_comparisons) +
+  facet_grid(mth~comp) +
+  scale_fill_continuous_divergingx(breaks = seq(-4,4,by=2),
+                                  labels = c("< -4", "-2", "0", "2", "> 4"),
+                                  name = "diff. (PDSI)",
+                                  palette = "Geyser",
+                                  rev = T) +
+  coord_fixed()
+
+```
+
+
+
+
+
+
+
+
+
+
 
 
 
