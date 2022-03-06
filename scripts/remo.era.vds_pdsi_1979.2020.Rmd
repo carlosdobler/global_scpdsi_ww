@@ -1,0 +1,413 @@
+---
+title: "Report 2: REMO vs ERA vs vdS - 1979-2020"
+author: "Carlos Dobler"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+Here I compare scPDSI spatio-temporal patterns between REMO2015, ERA5, and van der Schrier et al. **for 1979-2020**. REMO-dervied scPDSI was calculated from scratch, using the same methods I used for ERA5 in order to keep consistency. That includes using the whole temporal period (1979-2020) for calibration. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      out.width = '80%')
+
+source(here::here("scripts/00-set-up.R"))
+
+library(colorspace)
+
+plan(multicore, workers = 6)
+
+# load all vars
+
+readRDS(here::here("output/r_models_pdsi_1979_2020.rds")) -> r_models_pdsi
+readRDS(here::here("output/e_pdsi_pm_1979_2020.rds")) -> e_pdsi
+readRDS(here::here("output/v_pdsi_1979_2020.rds")) -> v_pdsi
+
+# land mask
+# warped at ERA resolution
+
+st_read("~/bucket_mine/misc_data/ne_50m_land/ne_50m_land.shp") %>%
+  mutate(a = 1) %>%
+  select(a) -> land
+
+land %>% 
+  st_rasterize(st_as_stars(st_bbox(), dx = 0.25, dy = 0.25, values = NA)) -> land_rast
+
+st_warp(land_rast %>%
+          st_set_dimensions(which = c(1,2),
+                            names = c("longitude", "latitude")),
+        e_pdsi %>% slice(time,1)) -> land_rast
+
+# mask
+
+r_models_pdsi %>%
+  map(st_warp, land_rast) %>% 
+  map(function(s){
+    s[is.na(land_rast)] <- NA
+    return(s)
+  }) -> r_models_pdsi
+
+r_models_pdsi %>% 
+  do.call(c, .) %>%
+  merge(name = "model") %>%
+  st_apply(c(1,2,3),
+           mean, na.rm = T,
+           .fname = "pdsi"
+  ) -> r_models_pdsi[["ENS"]]
+
+v_pdsi[is.na(land_rast)] <- NA
+e_pdsi[is.na(land_rast)] <- NA
+
+# merge
+
+models <- c("Had", "MPI", "Nor", "ENS", "ERA", "vdS")
+
+r_models_pdsi %>% 
+  do.call(c, .) %>% 
+  c(e_pdsi, v_pdsi) %>% 
+  setNames(models) -> all_pdsi
+
+# functions
+source(here::here("scripts/functions_1979.2020.R"))
+
+```
+
+## Temporal comparisons
+
+The following figure shows per-pixel correlations between pairs of data sources. REMO models as well as their ensemble display poor correlation with both ERA5-derived and van der Schrier's scPDSI. In many regions the correlation is actually negative, indicating "mirrored" scPDSI dynamics between models. As shown in the previous report, per-pixel correlation between ERA5 and van der Schrier is overall high (and positive).    
+
+```{r corr_pairwise, fig.height=4.8}
+
+tibble(ds1 = seq_along(models)) %>%
+  expand(ds1, ds2 = ds1) %>% 
+  filter(ds1 < ds2) -> ds
+
+ds %>% 
+  filter(ds2 %in% c(5,6)) -> ds
+
+pmap_dfr(ds, function(ds1, ds2){
+
+  func_t_cor_map(
+    all_pdsi %>% select(ds1),
+    all_pdsi %>% select(ds2)) %>% 
+    setNames("r") %>% 
+    as_tibble() %>% 
+    mutate(comp = str_glue("{models[ds1]}_vs_{models[ds2]}"))
+  
+}) -> tb_comp
+
+tb_comp %>% 
+  mutate(comp = factor(comp, levels = c("Had_vs_ERA",
+                                        "MPI_vs_ERA",
+                                        "Nor_vs_ERA",
+                                        "ENS_vs_ERA",
+                                        
+                                        "Had_vs_vdS",
+                                        "MPI_vs_vdS",
+                                        "Nor_vs_vdS",
+                                        "ENS_vs_vdS",
+                                        
+                                        "ERA_vs_vdS"))) -> tb_comp
+
+
+ggplot(tb_comp, aes(x = longitude, y = latitude, fill = r)) +
+  geom_raster() +
+  geom_polygon(data = land %>% st_crop(land_rast) %>% as("Spatial") %>% fortify(), 
+                 fill = NA,
+                 color = "black",
+                 aes(x = long, y = lat, group = group)) +
+  scale_fill_binned_diverging(palette = "Vik", 
+                              rev = T,
+                              na.value = "transparent",
+                              limits = c(-1,1),
+                              name = "r",
+                              n.breaks = 11) +
+  guides(fill = guide_colorsteps(barwidth = 15, barheight = 0.5)) +
+  facet_wrap(~comp, ncol = 4) +
+  coord_equal() +
+  labs(x = NULL,
+       y = NULL) +
+  theme(legend.position = "bottom")
+
+```
+
+The following plots compare scPDSI time-series from the REMO ensemble, ERA5, and van der Schrier. Each triad of plots corresponds to a randomly-chosen pixel. The figures show how ERA5 and vdS time-series tend to display a high correspondence between them, while dynamics from the REMO ensemble do not seem to resemble any of them (nor did individual REMO models, not shown here).
+
+```{r triad1, fig.height=3.8}
+
+func_random_ts_comparison(models[4:6])
+
+```
+
+
+```{r triad2, fig.height=3.8}
+
+func_random_ts_comparison(models[4:6])
+
+```
+
+
+```{r triad3, fig.height=3.8}
+
+func_random_ts_comparison(models[4:6])
+
+```
+
+## Spatial comparisons
+
+The following figure shows how scPDSI from the REMO ensemble, ERA5, and vdS correlate spatially. In all cases, correlation coefficients fluctuate over time in a "wave-like" form. When correlated against ERA5 and vdS, the REMO ensemble displays the lowest correlations overall (two upper plots). In many years, this correlation is actually negative (i.e. regions with a positive scPDSI in either ERA5 or vdS have a negative scPDSI in REMO, and *vice versa*). Spatial correlation between ERA5 and vdS (bottom) follows the same pattern as shown in the previous report.
+
+```{r sp_corr, fig.height=3.8}
+
+func_sp_correlation_over2(models[4:6])
+
+```
+
+The following three set of maps show REMO models and their ensemble, as well as ERA5 and vdS scPDSI for a randomly-chosen date, in an attempt to show how spatial patterns differ between data sources. 
+
+```{r sp_corr_1, fig.height=5.4}
+
+func_random_sp_comparison(models, models[4:6])
+
+```
+
+```{r sp_corr_2, fig.height=5.4}
+
+func_random_sp_comparison(models, models[4:6])
+
+```
+
+```{r sp_corr_3, fig.height=5.4}
+
+func_random_sp_comparison(models, models[4:6])
+
+```
+
+## Bonus: How does my REMO-derived scPDSI compares with Isabelle's?
+
+The following maps show temporal correlations between my scPDSI calculations and Isabelle's with REMO. Correlations are positive and very high overall. For the ensemble, some discrepancies are seen over Eastern Europe and western Spain.   
+
+```{r ir_1, fig.height=5.9}
+
+readRDS(here::here("output/r_models_pdsi_ir_1979_2030.rds")) -> r_models_pdsi_ir
+
+r_models_pdsi_ir %>%
+  map(filter, year(time) <= 2020) %>% 
+  map(st_warp, land_rast) %>% 
+  map(function(s){
+    s[is.na(land_rast)] <- NA
+    return(s)
+  }) -> r_models_pdsi_ir
+
+r_models_pdsi_ir %>% 
+  do.call(c, .) %>%
+  merge(name = "model") %>%
+  st_apply(c(1,2,3),
+           mean, na.rm = T,
+           .fname = "pdsi"
+  ) -> r_models_pdsi_ir[["ENS"]]
+
+
+map2(r_models_pdsi, r_models_pdsi_ir, func_t_cor_map) -> s_cor
+
+imap_dfr(s_cor, function(s, i){
+  s %>% 
+    as_tibble() %>% 
+    mutate(model = i %>% factor(levels = names(r_models_pdsi_ir)))
+}) -> s_cor
+
+ggplot(s_cor) +
+  geom_raster(aes(x = longitude, y = latitude, fill = pdsi)) +
+  geom_polygon(data = land %>% st_crop(land_rast) %>% as("Spatial") %>% fortify(), 
+               fill = NA,
+               color = "black",
+               aes(x = long, y = lat, group = group)) +
+  scale_fill_binned_diverging(palette = "Vik", 
+                              rev = T,
+                              na.value = "transparent",
+                              limits = c(-1,1),
+                              name = "r",
+                              n.breaks = 11) +
+  coord_fixed() +
+  facet_wrap(~model, ncol = 2) +
+  theme(legend.position = "bottom") +
+  guides(fill = guide_colorsteps(barwidth = 15, barheight = 0.5))
+
+```
+
+Could discrepancies be due to the fact that Isabelle adjusts for CO2 levels? The following maps show correlations after I do the same. Results do not seem to change much.
+
+```{r ir_2, fig.height=5.9}
+
+readRDS(here::here("output/r_models_vars_1971_20XX.rds")) -> r_models_vars
+readRDS(here::here("output/r_var_z.rds")) -> r_var_z
+readRDS(here::here("output/r_var_lat.rds")) -> r_var_lat
+
+# mask
+
+r_models_vars %>%
+  map(st_warp, land_rast) %>% 
+  map(function(s){
+    s[is.na(land_rast)] <- NA
+    return(s)
+  }) -> r_models_vars
+
+r_var_z %>% 
+  st_warp(land_rast) -> r_var_z
+r_var_z[is.na(land_rast)] <- NA
+
+r_var_lat %>% 
+  st_warp(land_rast) -> r_var_lat
+r_var_lat[is.na(land_rast)] <- NA
+
+source(here::here("scripts/penman_mine.R"))
+
+tibble(date = seq(as_date("1979-01-01"), as_date("2020-12-31"), by = "1 month")) %>%
+  mutate(co2 = case_when(year(date) < 1980 ~ 331,
+                         year(date) < 1990 ~ 345,
+                         year(date) < 2000 ~ 360,
+                         year(date) < 2010 ~ 379,
+                         year(date) >= 2010 ~ 402)) %>%
+  pull(co2) -> co2_ppm
+
+# pet
+r_models_vars %>%
+  imap(function(s_vars, i){
+    
+    s_vars %>% 
+      filter(year(time) >= 1979,
+             year(time) <= 2020) -> s_vars
+    
+    # print(str_glue("Processing {i}"))
+    
+    abind(
+      s_vars[[3]], # tasmean
+      s_vars[[1]], # rsds
+      s_vars[[2]], # sfcWind
+      s_vars[[4]], # dewpoint
+      r_var_z[[1]], # z
+      r_var_lat[[1]], # lat
+      along = 3) -> s_array
+    
+    names(dim(s_array)) <- c("lon", "lat", "time")
+    
+    s_array %>% 
+      st_as_stars() -> s_array
+    
+    c(1,
+      dim(s_vars[[3]])[3],
+      dim(s_vars[[1]])[3],
+      dim(s_vars[[2]])[3],
+      dim(s_vars[[4]])[3],
+      1,
+      1) %>% 
+      unname() %>% 
+      cumsum() -> index
+    
+    cbind(index[-length(index)],
+          index[-1]-1) -> index
+    
+    # tic("applying")
+    s_array %>% 
+      st_apply(c(1,2), function(x){
+        
+        penman_mine(Tmean = x[index[1,1]:index[1,2]],
+                    Rs = x[index[2,1]:index[2,2]],
+                    u2 = x[index[3,1]:index[3,2]],
+                    Tdew = x[index[4,1]:index[4,2]],
+                    z = x[index[5,1]:index[5,2]],
+                    lat = x[index[6,1]:index[6,2]],
+                    co2adj = T,
+                    model_i = i)
+        
+      }, 
+      .fname = "time") -> s_pet
+    # toc()
+    
+    s_pet %>% 
+      aperm(c(2,3,1)) %>% 
+      setNames("pet") -> s_pet
+    
+    st_dimensions(s_pet) <- st_dimensions(s_vars) 
+    
+    return(s_pet)           
+    
+  }) -> r_models_pet
+
+
+# scpdsi
+r_models_vars %>% 
+  map(select, "pr") %>% 
+  map(filter, year(time) >= 1979, year(time) <= 2020) -> r_models_pr
+
+map2(r_models_pr, r_models_pet, function(s_pr, s_pet){
+  
+  c(s_pr, s_pet, along = 3) %>% 
+    st_apply(c(1,2),
+             function(x){
+               
+               c(1,
+                 dim(s_pr)[3],
+                 dim(s_pet)[3]) %>% 
+                 unname() %>% 
+                 cumsum() -> index
+               
+               cbind(index[-length(index)],
+                     index[-1]-1) -> index
+               
+               scPDSI::pdsi(P = x[index[1,1]:index[1,2]], 
+                            PE = x[index[2,1]:index[2,2]], 
+                            sc = T)$X %>% as.vector()
+               
+             },
+             # FUTURE = T,
+             # future.seed = NULL,
+             .fname = "time") %>% 
+    
+    st_set_dimensions("time", values = st_get_dimension_values(s_pet, "time")) %>% 
+    aperm(c(2,3,1)) %>% 
+    setNames("pdsi")
+  
+}) -> r_models_pdsi
+
+# ensemble
+r_models_pdsi %>% 
+  do.call(c, .) %>%
+  merge(name = "model") %>%
+  st_apply(c(1,2,3),
+           mean, na.rm = T,
+           .fname = "pdsi"
+  ) -> r_models_pdsi[["ENS"]]
+
+# plot
+map2(r_models_pdsi, r_models_pdsi_ir, func_t_cor_map) -> s_cor
+
+imap_dfr(s_cor, function(s, i){
+  s %>% 
+    as_tibble() %>% 
+    mutate(model = i %>% factor(levels = names(r_models_pdsi_ir)))
+}) -> s_cor
+
+ggplot(s_cor) +
+  geom_raster(aes(x = longitude, y = latitude, fill = pdsi)) +
+  geom_polygon(data = land %>% st_crop(land_rast) %>% as("Spatial") %>% fortify(), 
+               fill = NA,
+               color = "black",
+               aes(x = long, y = lat, group = group)) +
+  scale_fill_binned_diverging(palette = "Vik", 
+                              rev = T,
+                              na.value = "transparent",
+                              limits = c(-1,1),
+                              name = "r",
+                              n.breaks = 11) +
+  coord_fixed() +
+  facet_wrap(~model, ncol = 2) +
+  theme(legend.position = "bottom") +
+  guides(fill = guide_colorsteps(barwidth = 15, barheight = 0.5))
+
+```
+

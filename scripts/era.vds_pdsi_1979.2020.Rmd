@@ -1,0 +1,556 @@
+---
+title: "Report 1: scPDSI with ERA5"
+author: "Carlos Dobler"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+Here I show results of a series of test runs for calculating scPDSI using ERA5 Reanalysis data with the R package `scPDSI`. All tests were ran for a region centered on ~~Mexico~~ Central Europe. Of the variables that scPDSI asks for, the only ones that would vary were monthly precipitation and monthly potential evapotranspiration (PET). AWC remained constant (100 mm), and the start and end calibration dates included the whole period (1979-2020). I used three PET formulations: one uses the "raw" potential evaporation from ERA5 Reanalysis data (no transpiration); another one uses Thornthwaite's PET formulation calculated with the R package `SPEI`; the last one uses a script I wrote to calculate Penman-Monteith's PET formulation based on [this document](https://edis.ifas.ufl.edu/pdf%5CAE%5CAE459%5CAE459-4802269.pdf) and incorporating [Yang et al.'s 2019](https://doi.org/10.1038/s41558-018-0361-0) and [Bliss Singer et al.'s 2021](https://www.nature.com/articles/s41597-021-01003-9) modifications (see [here](penman_mine.R) for the script). Results were compared against [van der Schrier et al.'s](https://doi.org/10.1002/jgrd.50355) latest scPDSI dataset based on CRU. 
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE,
+                      out.width = '80%')
+
+source(here::here("scripts/00-set-up.R"))
+
+library(SPEI)
+library(scPDSI)
+library(colorspace)
+
+plan(multicore, workers = 6)
+
+# load all vars
+
+readRDS(here::here("output/e_vars_1979_2020.rds")) -> e_vars
+readRDS(here::here("output/e_var_z.rds")) -> e_var_z
+readRDS(here::here("output/e_var_lat.rds")) -> e_var_lat
+readRDS(here::here("output/e_var_pev_1979_2020.rds")) -> e_var_pev
+
+readRDS(here::here("output/e_pet_pm_1979_2020.rds")) -> e_pet_pm
+readRDS(here::here("output/e_pdsi_pm_1979_2020.rds")) -> e_pdsi_pm
+
+readRDS(here::here("output/v_pdsi_1979_2020.rds")) -> v_pdsi
+
+# land mask
+# warped at ERA resolution
+
+st_read("~/bucket_mine/misc_data/ne_50m_land/ne_50m_land.shp") %>%
+  mutate(a = 1) %>%
+  select(a) -> land
+
+land %>% 
+  st_rasterize(st_as_stars(st_bbox(), dx = 0.25, dy = 0.25, values = NA)) -> land_rast
+
+st_warp(land_rast %>% 
+          st_set_dimensions(which = c(1,2),
+                            names = c("longitude", "latitude")),
+        e_var_z) -> land_rast                                     
+
+e_vars[is.na(land_rast)] <- NA
+e_var_z[is.na(land_rast)] <- NA
+e_var_lat[is.na(land_rast)] <- NA  
+e_var_pev[is.na(land_rast)] <- NA
+
+e_pet_pm[is.na(land_rast)] <- NA
+e_pdsi_pm[is.na(land_rast)] <- NA
+
+v_pdsi[is.na(land_rast)] <- NA
+
+# functions
+source(here::here("scripts/functions_1979.2020.R"))
+
+```
+
+
+## 1. PDSI with ERA5's potential evaporation
+
+```{r}
+
+func_pdsi(e_vars %>% select(tp),
+          e_var_pev) -> e_pdsi_pev
+
+```
+
+Map of a random date:    
+  
+```{r rand_date_1, fig.width=6.12, fig.height=5, out.width='70%'}
+
+func_map_date(e_pdsi_pev, 
+              sample(st_get_dimension_values(e_vars, "time"), 1))
+
+```
+
+
+### 1.1. Temporal correlation
+The following figure correlates my results against van der Schrier's on a per-pixel basis (i.e. time-series vs time-series). Correlation varies spatially, with some regions displaying a negative coefficient:
+
+```{r cor_map_1, fig.width=6.12, fig.height=4.8, out.width='70%'}
+
+func_t_cor_map(e_pdsi_pev, v_pdsi) -> s_cor
+func_t_cor_map_plot(s_cor)
+
+```
+
+If I randomly choose a pixel with a **high** correlation coefficient (r = 0.8), its time-series look like this:    
+
+```{r rand_ts_1_1, fig.height=2.5}
+
+func_ts_comparison_thres(s_cor, e_pdsi_pev, "ERA", 0.8)
+
+```
+
+If I choose one with a **low** correlation coefficient (r = 0.15):    
+
+```{r rand_ts_1_2, fig.height=2.5}
+
+func_ts_comparison_thres(s_cor, e_pdsi_pev, "ERA", 0.15)
+
+```
+
+
+### 1.2. Spatial correlation
+The following figure shows the spatial correlation between my results and van der Schrier's on a monthly basis (i.e. my resulting map at time *n* vs. VDS at time *n*). We can see correlation coefficients fluctuate in a "wave-like" form, overall descending over time:   
+
+```{r sp_1, fig.height=2.5}
+
+func_sp_correlation(e_pdsi_pev)
+
+```
+
+If I randomly choose a date with **high-ish** spatial correlation (r = 0.65), the two maps look like this:
+
+```{r rand_sp_1_1, fig.height=3.6}
+
+func_sp_comparison_maps(e_pdsi_pev, "ERA", 0.65)
+
+```
+
+If I choose one with **low** correlation (r = 0.1):    
+
+```{r rand_sp_1_2, fig.height=3.6}
+
+func_sp_comparison_maps(e_pdsi_pev, "ERA", 0.1)
+
+```
+
+
+
+## 2. PDSI with Thornthwaite's PET formulation
+Thornthwaite's PET formulation uses two variables: average temperature and latitude.    
+```{r}
+
+# calculate pet
+e_vars %>% select(t2m) %>% # temp
+  split("time") %>% 
+  c(e_var_lat) %>% # lat
+  merge() %>% 
+  
+  st_apply(c(1,2), function(x){
+    
+    x[1:504] -> x_ts
+    tail(x, 1) -> lat
+    
+    thornthwaite(Tave = x_ts, 
+                 lat = lat,
+                 na.rm = T)  
+    
+  }, 
+  FUTURE = T,
+  .fname = "time") %>% 
+  st_set_dimensions("time", values = st_get_dimension_values(e_vars, "time")) %>% 
+  aperm(c(2,3,1)) -> pet
+
+# calculate pdsi
+func_pdsi(e_vars %>% select(tp),
+          pet) -> e_pdsi_th
+
+```
+
+Map of a random date:    
+
+```{r rand_date_2, fig.width=6.12, fig.height=5, out.width='70%'}
+
+func_map_date(e_pdsi_th,
+              sample(st_get_dimension_values(e_vars, "time"), 1))
+
+```
+
+
+### 2.1. Temporal correlation
+Per-pixel correlation of my results based on Thornthwaite vs van der Schrier's shows a drastic improvement over previous results. All cells show positive correlations, and most of them with high coefficients. 
+
+```{r cor_map_2, fig.width=6.12, fig.height=4.8, out.width='70%'}
+
+func_t_cor_map(e_pdsi_th, v_pdsi) -> s_cor
+func_t_cor_map_plot(s_cor)
+
+```
+
+If I randomly choose a pixel with **high** correlation (r = 0.8), its time-series look like this:    
+
+```{r rand_ts_2_1, fig.height=2.5}
+
+func_ts_comparison_thres(s_cor, e_pdsi_th, "ERA", 0.8)
+
+```
+
+And one with **low** correlation (r = 0.15):    
+
+```{r rand_ts_2_2, fig.height=2.5}
+
+func_ts_comparison_thres(s_cor, e_pdsi_th, "ERA", 0.15)
+
+```
+
+### 2.2. Spatial correlation
+Spatially, correlation between my results and van der Schrier's fluctuates between ~0.2 and ~0.7, again, in a "wave-like" form:    
+
+```{r sp_2, fig.height=2.5}
+
+func_sp_correlation(e_pdsi_th)
+
+```
+
+If I randomly choose a date when correlation was **high-ish** (r = 0.65) it looks like this:    
+
+```{r rand_sp_2_1, fig.height=3.6}
+
+func_sp_comparison_maps(e_pdsi_th, "ERA", 0.65)
+
+```
+
+And a date when correlation was **low** (r = 0.1):
+
+```{r rand_sp_2_2, fig.height=3.6}
+
+func_sp_comparison_maps(e_pdsi_th, "ERA", 0.2)
+
+```
+
+
+## 3. PDSI with Penman-Monteith's PET formulation
+Penman-Monteith's PET formulation can include several variables; some are used to derive others. In this case, I used: mean temperature, wind speed, radiance, dewpoint temperature (to derive vapor pressure), and elevation (I used ERA5 geopotential height divided by the Earth's gravitational acceleration, g = 9.8 m/s).     
+
+
+Map of a random date:    
+
+```{r rand_date_3, fig.width=6.12, fig.height=5, out.width='70%'}
+
+func_map_date(e_pdsi_pm, 
+              sample(st_get_dimension_values(e_vars, "time"), 1))
+
+```
+
+
+### 3.1. Temporal correlation
+Correlation coefficients on a per-pixel basis are very similar (almost identical) to those obtained with Thornthwaite's PET formulations:     
+
+```{r cor_map_3, fig.width=6.12, fig.height=4.8, out.width='70%'}
+
+func_t_cor_map(e_pdsi_pm, v_pdsi) -> s_cor
+func_t_cor_map_plot(s_cor)
+
+```
+
+If I randomly choose a pixel with **high** correlation (r = 0.8):    
+
+```{r rand_ts_3_1, fig.height=2.5}
+
+func_ts_comparison_thres(s_cor, e_pdsi_pm, "ERA", 0.8)
+
+```
+
+And one with **low** correlation (r = 0.2):    
+
+```{r rand_ts_3_2, fig.height=2.5}
+
+func_ts_comparison_thres(s_cor, e_pdsi_pm, "ERA", 0.2)
+
+```
+
+### 3.2. Spatial correlation
+The spatial correlation trend also looks very similar to previous results, although the "overall" trend (blue line) is slightly lower:    
+
+```{r sp_3, fig.height=2.5}
+
+func_sp_correlation(e_pdsi_pm)
+
+```
+
+If I randomly choose a date with **high-ish** correlations (r = 0.65):    
+
+```{r rand_sp_3_1, fig.height=3.6}
+
+func_sp_comparison_maps(e_pdsi_pm, "ERA", 0.65)
+
+```
+
+And one with **low** correlations (r = 0.2):    
+
+```{r rand_sp_3_2, fig.height=3.6}
+
+func_sp_comparison_maps(e_pdsi_pm, "ERA", 0.2)
+
+```
+
+
+## 4. PDSI with Penman-M + AWC
+
+AWC is a variable required in the calculation of PDSI. I found several AWC datasets, but all of them are quite complicated to obtain and process (they are distributed in either antique, bizarre, or proprietary data formats). Before going through the pain of dealing with this, I ran an experiment to see to what extent AWC could improve results. The experiment consists of altering AWC values iteratively for each pixel and choose the one that gets me "the best" PDSI (i.e. the one that correlates the highest with van der Schrier). Thus, while in the former runs AWC was kept constant (100 mm), here it can have values from 5 to 215 mm for each pixel.    
+
+```{r}
+
+func_awc <- function(x){
+  
+  if(sum(is.na(x)) > 0){
+      rep(NA, 506)
+     } else{
+       
+       map_dfr(seq(5, 230, 30), function(awc_i){
+         
+         pdsi(P = x[1:504], 
+              PE = x[505:1008], 
+              AWC = awc_i,
+              sc = T)$X %>% as.vector() -> pdsi_result
+         
+         tibble(pdsi = pdsi_result,
+                awc = awc_i)
+         
+       }) -> tb_awc
+       
+       tb_awc %>% 
+         group_by(awc) %>% 
+         summarize(r = cor(pdsi, x[1009:1512])) %>% 
+         filter(r == max(r, na.rm = T)) %>% 
+         slice_sample(n = 1) -> tb_cor
+       
+       tb_awc %>% 
+         filter(awc == tb_cor$awc) %>% 
+         pull(pdsi) -> vect_pdsi
+       
+       # vect_pdsi
+       c(vect_pdsi, tb_cor$awc, tb_cor$r)
+  
+     }
+}
+
+# ******
+
+c(e_vars %>% select(tp), 
+  e_pet_pm, 
+  v_pdsi, along = 3) %>%
+  
+  st_apply(c(1,2),
+           func_awc,
+           FUTURE = T,
+           future.seed = NULL,
+           .fname = "time") -> s_pdsi
+
+s_pdsi %>% 
+  slice(time, 505) -> s_awc
+
+# s_pdsi %>% 
+#   slice(time, 506) -> s_cor
+
+s_pdsi %>%
+  slice(time, 1:504) %>% 
+  st_set_dimensions("time", values = st_get_dimension_values(e_vars, "time")) %>% 
+  aperm(c(2,3,1)) -> e_pdsi_pm_awc
+
+rm(s_pdsi)
+
+```
+
+This is how the "artificial" AWC layer looks like:    
+
+```{r awc, fig.width=6.12, fig.height=4.8, out.width='70%'}
+
+ggplot() +
+  geom_stars(data = s_awc) +
+  geom_polygon(data = land %>% st_crop(land_rast) %>% as("Spatial") %>% fortify(), 
+                 fill = NA,
+                 color = "black",
+                 aes(x = long, y = lat, group = group)) +
+  scale_fill_continuous_sequential(palette = "Viridis", 
+                                   rev = T, 
+                                   na.value = "transparent",
+                                   name = "mm") +
+  coord_fixed() +
+  guides(fill = guide_colorbar(barwidth = 15, barheight = 0.5)) +
+  theme(legend.position = "bottom") +
+  
+  labs(x = NULL,
+       y = NULL)
+
+```
+
+
+### 4.1. Temporal correlation
+Unfortunately, the incorporation of AWC does not seem to change results in a substantial way:    
+
+```{r cor_map_4, fig.width=6.12, fig.height=4.8, out.width='70%'}
+
+func_t_cor_map(e_pdsi_pm_awc, v_pdsi) -> s_cor
+func_t_cor_map_plot(s_cor)
+
+```
+
+### 4.2. Spatial correlation
+...although spatially it does seem to slightly improve correlations (interestingly, the patterns is very similar to the run with Thornthwaite):    
+
+```{r sp_4, fig.height=2.5}
+
+func_sp_correlation(e_pdsi_pm_awc)
+
+```
+
+## 5. Comparison between ERA5-derived PDSI results
+How do all previous results compare (i.e. correlate) to each other? With the exception of those obtained with ERA5's potential evaporation (section 1), the rest of the results correlate extremely well with each other - in other words, they are **almost** identical.
+
+```{r comp_all, fig.height=8.25}
+
+c("evap", "thorn", "penm", "penm_awc") -> all_s_names
+
+c(e_pdsi_pev,
+  e_pdsi_th,
+  e_pdsi_pm,
+  e_pdsi_pm_awc) %>% 
+  setNames(all_s_names) -> all_s
+
+tibble(ds1 = 1:4) %>%
+  expand(ds1, ds2 = ds1) %>% 
+  filter(ds1 < ds2) -> ds
+
+pmap_dfr(ds, function(ds1, ds2){
+
+  func_t_cor_map(
+    all_s %>% select(ds1),
+    all_s %>% select(ds2)) %>% 
+    setNames("r") %>% 
+    as_tibble() %>% 
+    mutate(comp = str_glue("{all_s_names[ds1]}_vs_{all_s_names[ds2]}"))
+  
+}) -> tb_comp
+
+ggplot(tb_comp, aes(x = longitude, y = latitude, fill = r)) +
+  geom_raster() +
+  geom_polygon(data = land %>% st_crop(land_rast) %>% as("Spatial") %>% fortify(), 
+                 fill = NA,
+                 color = "black",
+                 aes(x = long, y = lat, group = group)) +
+  scale_fill_binned_diverging(palette = "Vik", 
+                              rev = T,
+                              na.value = "transparent",
+                              limits = c(-1,1),
+                              # breaks = c(-0.9, 0, 0.9),
+                              # labels = c("-0.9", "0", "0.9"),
+                              name = "r",
+                              n.breaks = 11) +
+  facet_wrap(~comp, ncol = 2) +
+  coord_equal() +
+  guides(fill = guide_colorsteps(barwidth = 15, barheight = 0.5)) +
+  theme(legend.position = "bottom") +
+  labs(x = NULL,
+       y = NULL)
+  
+
+```
+
+
+## Bonus: Penman-M with CO2 adjustment
+
+Here I incorporated the CO2 adjustment into Penman-M's PET formulation following [Yang et al. 2019](https://doi.org/10.1038/s41558-018-0361-0).
+
+```{r}
+
+source(here::here("scripts", "penman_mine.R"))
+
+tibble(date = st_get_dimension_values(e_vars, "time")) %>%
+  mutate(co2 = case_when(year(date) < 1980 ~ 331,
+                         year(date) < 1990 ~ 345,
+                         year(date) < 2000 ~ 360,
+                         year(date) < 2010 ~ 379,
+                         year(date) >= 2010 ~ 402)) %>%
+  pull(co2) -> co2_ppm
+
+abind(
+  e_vars[[1]], # tmean
+  e_vars[[3]], # ssrd (radiation)
+  e_vars[[4]], # si10 (wind speed)
+  e_vars[[2]], # dewpoint
+  e_var_z[[1]], # z
+  e_var_lat[[1]], # lat
+  along = 3) -> s_array
+
+names(dim(s_array)) <- c("longitude", "latitude", "time")
+
+s_array %>% 
+  st_as_stars() -> s_array
+
+c(1,
+  dim(e_vars[[1]])[3],
+  dim(e_vars[[3]])[3],
+  dim(e_vars[[4]])[3],
+  dim(e_vars[[2]])[3],
+  1,
+  1) %>% 
+  unname() %>% 
+  cumsum() -> index
+
+cbind(index[-length(index)],
+      index[-1]-1) -> index
+
+s_array %>% 
+  st_apply(c(1,2), function(x){
+    
+    penman_mine(Tmean = x[index[1,1]:index[1,2]],
+                Rs = x[index[2,1]:index[2,2]],
+                u2 = x[index[3,1]:index[3,2]],
+                Tdew = x[index[4,1]:index[4,2]],
+                z = x[index[5,1]:index[5,2]],
+                lat = x[index[6,1]:index[6,2]],
+                co2adj = T)
+    
+  }, 
+  .fname = "time") %>%
+  aperm(c(2,3,1)) %>% 
+  setNames("pet") -> pet
+
+st_dimensions(pet) <- st_dimensions(e_vars) 
+
+rm(s_array, index, J, days_mth, co2_ppm)
+
+
+# scpdsi
+func_pdsi(e_vars %>% select(tp),
+          pet) -> e_pdsi_pm_co2adj
+
+```
+
+### 6.1. Temporal correlation
+Results show a similar pattern of temporal correlation with van der Schrier compared to previous results:
+
+```{r cor_map_6, fig.width=6.12, fig.height=4.8, out.width='70%'}
+
+func_t_cor_map(e_pdsi_pm_co2adj, v_pdsi) -> s_cor
+func_t_cor_map_plot(s_cor)
+
+```
+
+### 6.2. Spatial correlation
+However, overall spatial correlation shows now a declining trend over time:
+
+```{r sp_6, fig.height=3.6}
+
+func_sp_correlation(e_pdsi_pm_co2adj)
+
+```
+
+
+
+

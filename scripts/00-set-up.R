@@ -7,6 +7,7 @@ library(lubridate)
 library(tictoc)
 library(furrr)
 library(stars)
+library(units)
 
 sf_use_s2(F)
 
@@ -21,19 +22,16 @@ options(future.globals.maxSize= 10000*1024^2)
 # MOUNT BUCKETS AND DRIVE
 
 # risk team bucket
-system("gcsfuse cmip5_data /home/cdobler/bucket_risk/")
-dir_bucket_risk <- "/home/cdobler/bucket_risk/"
+# dir_bucket_risk <- "/home/cdobler/bucket_risk/"
 
 # my bucket
-system("gcsfuse clim_data_reg_useast1 /home/cdobler/bucket_mine/")
-dir_bucket_mine <- "/home/cdobler/bucket_mine/"
+# dir_bucket_mine <- "/home/cdobler/bucket_mine/"
 
 # persistent disk
-system("sudo mount -o discard,defaults /dev/sdb /home/cdobler/pers_disk")
-dir_disk <- "/home/cdobler/pers_disk"
+# dir_disk <- "/home/cdobler/pers_disk"
 
 # *************************************************************************************************
 
 # OTHER DIRS
 # dir_data <- "/home/cdobler/bucket_mine/misc_data/"
-dir_output <- "/home/cdobler/bucket_mine/results/global_scpdsi_ww/"
+# dir_output <- "/home/cdobler/bucket_mine/results/global_scpdsi_ww/"
