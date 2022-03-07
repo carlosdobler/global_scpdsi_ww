@@ -29,7 +29,7 @@ Differences can better be appreciated in the following figure, which
 shows pair-wise comparisons (subtractions) between data sources. In
 general, REMO models tend to show lower levels of extreme drought than
 ERA5. This is also true when compared to vdS, but only for central and
-western Europe. In eastern Europe/Russia, REMO models tend to be show
+western Europe. In eastern Europe/Russia, REMO models tend to show
 higher levels of drought than vdS. ERA and vdS show considerable
 discrepancies in the Scandinavian peninsula and eastern Europe/Russia.
 
@@ -49,6 +49,14 @@ for the 80th percentile. The figure confirms that REMO models present
 wetter conditions than ERA5 and vdS.
 
 <img src="remo.era.vds_pdsi_1deg_files/figure-gfm/fig_1_2_2-1.png" width="80%" />
+
+### 1.3. Percent of months with severe drought (\< -3 PDSI)
+
+<img src="remo.era.vds_pdsi_1deg_files/figure-gfm/fig_1_3-1.png" width="80%" />
+
+### 1.4. EOFs
+
+<img src="remo.era.vds_pdsi_1deg_files/figure-gfm/fig_1_4-1.png" width="80%" />
 
 ## 2. Seasonal patterns
 
