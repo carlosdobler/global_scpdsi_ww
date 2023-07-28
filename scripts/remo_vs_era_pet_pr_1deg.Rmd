@@ -1,0 +1,324 @@
+---
+title: "REMO vs ERA in a 1 degree world: PET & Precip"
+author: "Carlos Dobler"
+date: "2/25/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(colorspace)
+
+source(here::here("scripts/00-set-up.R"))
+
+c(st_point(c(-11, 65)),
+  st_point(c(39, 32))) %>% 
+  st_bbox() %>% 
+  st_set_crs(4326) -> lim
+
+source(here::here("scripts/remo.R"))
+
+```
+
+Mean monthly PET:
+
+```{r}
+
+r_models_pet_ann %>% 
+  st_warp(e_var_pet_ann) %>% 
+  split("model") %>% 
+  {c(e_var_pet_ann, .)} -> all_pet_ann
+
+all_pet_ann[is.na(r_land_rast)] <- NA
+  
+all_pet_ann %>% 
+  merge(name = "model") %>% 
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~model, ncol = 2) +
+      scale_fill_continuous_sequential("Plasma", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+Differences in mean monthly PET between REMO and ERA:
+
+```{r}
+
+all_pet_ann %>% 
+  mutate(ERA_Had = ERA - Had,
+         ERA_MPI = ERA - MPI,
+         ERA_Nor = ERA - Nor,
+         ERA_ENS = ERA - ENS) %>% 
+  select(-c(1:5)) %>% 
+  merge(name = "model") %>% 
+  st_set_dimensions("model", values = str_replace(st_get_dimension_values(., "model"), "_", " - ")) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~model, ncol = 2) +
+      scale_fill_continuous_divergingx("Spectral", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+Mean monthly precipitation:
+
+```{r}
+
+r_models_pr_ann %>% 
+  st_warp(e_var_pr_ann) %>% 
+  split("model") %>% 
+  {c(e_var_pr_ann, .)} -> all_pr_ann
+
+all_pr_ann[is.na(r_land_rast)] <- NA
+  
+all_pr_ann %>% 
+  merge(name = "model") %>% 
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~model, ncol = 2) +
+      scale_fill_continuous_sequential("Plasma", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+Differences in mean monthly precipitation between REMO and ERA:
+
+```{r}
+
+all_pr_ann %>% 
+  mutate(ERA_Had = ERA - Had,
+         ERA_MPI = ERA - MPI,
+         ERA_Nor = ERA - Nor,
+         ERA_ENS = ERA - ENS) %>% 
+  select(-c(1:5)) %>% 
+  merge(name = "model") %>% 
+  st_set_dimensions("model", values = str_replace(st_get_dimension_values(., "model"), "_", " - ")) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~model, ncol = 2) +
+      scale_fill_continuous_divergingx("Spectral", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+
+
+```
+
+Mean count of months/year with SPEI-3 < -1.5:
+
+```{r}
+
+r_models_spei_ann %>% 
+  st_warp(e_var_spei_ann) %>% 
+  split("model") %>% 
+  {c(e_var_spei_ann, .)} -> all_spei_ann
+
+all_spei_ann[is.na(r_land_rast)] <- NA
+  
+all_spei_ann %>% 
+  merge(name = "model") %>% 
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~model, ncol = 2) +
+      scale_fill_continuous_sequential("Plasma", name = "count of months", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+Differences in count of months/year with SPEI-3 < -1.5 between REMO and ERA:
+
+```{r}
+
+all_spei_ann %>% 
+  mutate(ERA_Had = ERA - Had,
+         ERA_MPI = ERA - MPI,
+         ERA_Nor = ERA - Nor,
+         ERA_ENS = ERA - ENS) %>% 
+  select(-c(1:5)) %>% 
+  merge(name = "model") %>% 
+  st_set_dimensions("model", values = str_replace(st_get_dimension_values(., "model"), "_", " - ")) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_wrap(~model, ncol = 2) +
+      scale_fill_continuous_divergingx("Spectral", name = "diff.\n(count of months)", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+
+
+
+
+Mean seasonal cycle for PET:
+
+```{r}
+
+r_models_pet_msc %>%
+  map(st_warp, e_var_pet_msc) %>% 
+  do.call(c, .) %>% 
+  {c(e_var_pet_msc, .)} %>% 
+  setNames(c("ERA", "Had", "MPI", "Nor", "ENS")) -> all_pet_msc
+
+all_pet_msc[is.na(r_land_rast)] <- NA
+  
+all_pet_msc %>% 
+  merge(name = "model") %>%
+  slice(month, c(1,4,7,10)) %>% 
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(model~month) +
+      scale_fill_continuous_sequential("Plasma", name = "mm", rev = F) +
+      coord_fixed()
+  }
+
+```
+
+Differences in the mean seasonal cycle between REMO and ERA:
+
+```{r}
+
+all_pet_msc %>% 
+  mutate(ERA_Had = ERA - Had,
+         ERA_MPI = ERA - MPI,
+         ERA_Nor = ERA - Nor,
+         ERA_ENS = ERA - ENS) %>% 
+  select(-c(1:5)) %>% 
+  merge(name = "model") %>% 
+  st_set_dimensions("model", values = str_replace(st_get_dimension_values(., "model"), "_", " - ")) %>% 
+  slice(month, c(1,4,7,10)) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(model~month) +
+      scale_fill_continuous_divergingx("Spectral", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+Mean seasonal cycle for precipitation:
+
+```{r}
+r_models_pr_msc %>%
+  map(st_warp, e_var_pr_msc) %>% 
+  do.call(c, .) %>% 
+  {c(e_var_pr_msc, .)} %>% 
+  setNames(c("ERA", "Had", "MPI", "Nor", "ENS")) -> all_pr_msc
+
+all_pr_msc[is.na(r_land_rast)] <- NA
+  
+all_pr_msc %>% 
+  merge(name = "model") %>%
+  slice(month, c(1,4,7,10)) %>% 
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(model~month) +
+      scale_fill_continuous_sequential("Plasma", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+```
+
+Differences in precipitation's mean seasonal cycle between REMO and ERA 
+
+```{r}
+
+all_pr_msc %>% 
+  mutate(ERA_Had = ERA - Had,
+         ERA_MPI = ERA - MPI,
+         ERA_Nor = ERA - Nor,
+         ERA_ENS = ERA - ENS) %>% 
+  select(-c(1:5)) %>% 
+  merge(name = "model") %>% 
+  st_set_dimensions("model", values = str_replace(st_get_dimension_values(., "model"), "_", " - ")) %>% 
+  slice(month, c(1,4,7,10)) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(model~month) +
+      scale_fill_continuous_divergingx("Spectral", name = "mm", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+Mean seasonal cycle for count of months/year with SPEI-3 < -1.5:
+
+```{r}
+
+r_models_spei_msc %>%
+  map(st_warp, e_var_spei_msc) %>% 
+  do.call(c, .) %>% 
+  {c(e_var_spei_msc, .)} %>% 
+  setNames(c("ERA", "Had", "MPI", "Nor", "ENS")) -> all_spei_msc
+
+all_spei_msc[is.na(r_land_rast)] <- NA
+  
+all_spei_msc %>% 
+  merge(name = "model") %>%
+  slice(month, c(1,4,7,10)) %>% 
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(model~month) +
+      scale_fill_binned_sequential("Plasma", name = "count of months", rev = F) +
+      coord_fixed()
+  }
+
+```
+
+Differences in the mean seasonal cycle for count of months/year with SPEI-3 < -1.5 between REMO and ERA:
+
+```{r}
+
+all_spei_msc %>% 
+  mutate(ERA_Had = ERA - Had,
+         ERA_MPI = ERA - MPI,
+         ERA_Nor = ERA - Nor,
+         ERA_ENS = ERA - ENS) %>% 
+  select(-c(1:5)) %>% 
+  merge(name = "model") %>% 
+  st_set_dimensions("model", values = str_replace(st_get_dimension_values(., "model"), "_", " - ")) %>% 
+  slice(month, c(1,4,7,10)) %>% 
+  
+  {
+    ggplot() +
+      geom_stars(data = .) +
+      facet_grid(model~month) +
+      scale_fill_continuous_divergingx("Spectral", name = "count of months", rev = F) +
+      coord_fixed()
+      
+  }
+
+```
+
+

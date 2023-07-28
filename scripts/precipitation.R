@@ -58,9 +58,6 @@ rm(s)
 saveRDS(foo, "output/starr_potevap_monthlysums_monthlyres.rds")
 
 
-# ************
-
-read_stars(str_glue("{dir_bucket_risk}/Reanalysis_data/ERA5_raw_data/monthly/temperature/mon_temp_1979_1999.nc")) -> s_1
 
 
 # ************
